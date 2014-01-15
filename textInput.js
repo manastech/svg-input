@@ -72,6 +72,7 @@ function TextInput(containerId) {
 
 	function updatTextDisplay() {
 		_textDisplay.setData(_string);
+		_textDisplay.setCaret(_caret);
 	}
 
 	function clickHandler(e) {
@@ -81,22 +82,15 @@ function TextInput(containerId) {
 
 	function keyPressHandler(e) {
 		e.preventDefault();
-		if(_selection != undefined) {
-			var start = _selection != undefined? Math.min(_selection[0], _selection[1]) : caret;
-			var length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 0;
-			_string = _string.splice(start, length, String.fromCharCode(e.keyCode));
-			setSelection();
-		} else {
-			_string = _string.splice(_caret, 0, String.fromCharCode(e.keyCode));
-		}
+		var char = String.fromCharCode(e.keyCode);
+		var start = _selection != undefined? Math.min(_selection[0], _selection[1]) : _caret;
+		var length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 0;
+		_string = _string.splice(start, length, char);
+		setSelection();
 		_caret++;
 		updatTextDisplay();
 		console.log(state());
 	}
-
-	//on click set caret position
-	//Arrow up/down find near char (selection)
-	//page up/down caret first position scroll (selection)
 
 	function keyDownHandler(e) {
 		var start, length;
@@ -105,11 +99,15 @@ function TextInput(containerId) {
 		switch(e.keyCode) {
 			case 8://Backspace
 				e.preventDefault();
-				start = _selection != undefined? Math.min(_selection[0], _selection[1]) : caret - 1;
-				length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 1;
-				_string = _string.splice(start, length, "");
+				if(caret) {
+					start = _selection != undefined? Math.min(_selection[0], _selection[1]) : caret - 1;
+					length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 1;
+					_string = _string.splice(start, length, "");
+					if(_selection == undefined) {
+						caret--;
+					}
+				}
 				setSelection();
-				caret--;
 				break;
 			case 9://Tab
 			case 27://Escape
@@ -143,7 +141,7 @@ function TextInput(containerId) {
 				}
 				break;
 			case 37://Arrow left
-				if(e.ctrlKey) {
+				if(e.ctrlKey || e.metaKey) {
 					var prevSpace = _string.substring(0, caret - 1).lastIndexOf(" ");
 					if(prevSpace != -1) {
 						caret = prevSpace + 1;
@@ -162,7 +160,7 @@ function TextInput(containerId) {
 			case 38://Arrow up
 				break;
 			case 39://Arrow right
-				if(e.ctrlKey) {
+				if(e.ctrlKey || e.metaKey) {
 					var nextSpace = _string.indexOf(" ", caret);
 					if(nextSpace != -1) {
 						caret = nextSpace + 1;
