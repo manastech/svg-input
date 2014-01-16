@@ -11,6 +11,7 @@ function TextInput(containerId) {
 	var _height = 100;
 	var _container = document.getElementById(containerId);
 	var _textDisplay = new TextDisplay();
+	_textDisplay.addEventListener(Event.CARET, caretHandler);
 	_container.appendChild(_textDisplay.svg);
 	_container.addEventListener("click", clickHandler);
 	this.invalidate();
@@ -99,7 +100,7 @@ function TextInput(containerId) {
 		switch(e.keyCode) {
 			case 8://Backspace
 				e.preventDefault();
-				if(caret) {
+				if(caret || (_selection != undefined && _selection.length)) {
 					start = _selection != undefined? Math.min(_selection[0], _selection[1]) : caret - 1;
 					length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 1;
 					_string = _string.splice(start, length, "");
@@ -204,6 +205,10 @@ function TextInput(containerId) {
 	function clickOutsideHandler(e) {
 		e.stopPropagation();
 		self.setFocus(false);
+	}
+
+	function caretHandler(e) {
+		_textDisplay.setCaret(e.info);
 	}
 }
 

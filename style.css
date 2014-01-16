@@ -1,0 +1,11 @@
+.char {
+	-moz-user-select: -moz-none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	font-family: "Arial";
+	charNode-rendering: "geometricPrecision";
+	font-size:15px;
+	fill:#000000
+}

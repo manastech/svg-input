@@ -59,4 +59,4 @@ function Event(type, info) {
 	this.info = info;
 };
 
-Event.SELECT = "select";
+Event.CARET = "caret";
