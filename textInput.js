@@ -3,6 +3,9 @@ function TextInput(containerId) {
 	EventDispatcher.call(this);
 	InvalidateElement.call(this);
 
+	const ALL = "all";
+	const CARET = "caret";
+	const NONE = "none";
 	var self = this;
 	var _caret = 0;
 	var _selection;
@@ -65,15 +68,28 @@ function TextInput(containerId) {
 			return;
 		}
 		if(_selection == undefined) {
-			_selection = [last, current];
+			_selection = [last, bound(current)];
 		} else {
-			_selection[1] = current;
+			_selection[1] = bound(current);
 		}
 	}
 
-	function updatTextDisplay() {
-		_textDisplay.setData(_string);
-		_textDisplay.setCaret(_caret);
+	function updatTextDisplay(value) {
+		switch(value) {
+			case ALL:
+				_textDisplay.setText(_string);
+			case CARET:
+				if(_selection != undefined) {
+					_selection[0] = bound(_selection[0]);
+					_selection[1] = bound(_selection[1]);
+					_textDisplay.setSelection(_selection[0], _selection[1]);
+				} else {
+					_textDisplay.setSelection();
+				}
+				_textDisplay.setCaret(_caret);
+				break;
+		}
+		if(value != NONE) console.log(state());
 	}
 
 	function clickHandler(e) {
@@ -89,15 +105,23 @@ function TextInput(containerId) {
 		_string = _string.splice(start, length, char);
 		setSelection();
 		_caret++;
-		updatTextDisplay();
-		console.log(state());
+		updatTextDisplay(ALL);
+		//_textDisplay.appendChar(char);
+		//_textDisplay.setCaret(_caret);
 	}
 
 	function keyDownHandler(e) {
-		var start, length;
+		var start, length, position;
 		var caret = _caret;
-		var update = true;
+		var update = ALL;
 		switch(e.keyCode) {
+			case 13://Enter
+			case 16://Shift
+			case 17://Control
+			case 18://Alt
+			case 33://Page up
+			case 34://Page down
+				return;
 			case 8://Backspace
 				e.preventDefault();
 				if(caret || (_selection != undefined && _selection.length)) {
@@ -106,6 +130,8 @@ function TextInput(containerId) {
 					_string = _string.splice(start, length, "");
 					if(_selection == undefined) {
 						caret--;
+					} else {
+						caret = Math.min(_selection[0], _selection[1]);
 					}
 				}
 				setSelection();
@@ -113,17 +139,7 @@ function TextInput(containerId) {
 			case 9://Tab
 			case 27://Escape
 				self.setFocus(false);
-				break;
-			case 13://Enter
-				break;
-			case 16://Shift
-			case 17://Control
-			case 18://Alt
-				return;
-				break;
-			case 33://Page up
-				break;
-			case 34://Page down
+				update = NONE;
 				break;
 			case 35://End
 				caret = Number.MAX_VALUE;
@@ -132,6 +148,7 @@ function TextInput(containerId) {
 				} else {
 					setSelection();
 				}
+				update = CARET;
 				break;
 			case 36://Home
 				caret = 0;
@@ -140,6 +157,7 @@ function TextInput(containerId) {
 				} else {
 					setSelection();
 				}
+				update = CARET;
 				break;
 			case 37://Arrow left
 				if(e.ctrlKey || e.metaKey) {
@@ -157,8 +175,19 @@ function TextInput(containerId) {
 				} else {
 					setSelection();
 				}
+				update = CARET;
 				break;
 			case 38://Arrow up
+				e.preventDefault();
+				position = _textDisplay.getCaretPosition();
+				position.y -= _textDisplay.getLineHeight();
+				caret = _textDisplay.getNearestCaretPosition(position, false).position;
+				if(e.shiftKey) {
+					setSelection(_caret, caret);
+				} else {
+					setSelection();
+				}
+				update = CARET;
 				break;
 			case 39://Arrow right
 				if(e.ctrlKey || e.metaKey) {
@@ -176,8 +205,19 @@ function TextInput(containerId) {
 				} else {
 					setSelection();
 				}
+				update = CARET;
 				break;
 			case 40://Arrow down
+				e.preventDefault();
+				position = _textDisplay.getCaretPosition();
+				position.y += _textDisplay.getLineHeight();
+				caret = _textDisplay.getNearestCaretPosition(position, false).position;
+				if(e.shiftKey) {
+					setSelection(_caret, caret);
+				} else {
+					setSelection();
+				}
+				update = CARET;
 				break;
 			case 46://Delete
 				start = _selection != undefined? Math.min(_selection[0], _selection[1]) : caret;
@@ -188,18 +228,11 @@ function TextInput(containerId) {
 				setSelection();
 				break;
 			default:
-				update = false;
+				update = NONE;
 				break;
 		}
-		if(update) {
-			_caret = bound(caret);
-			if(_selection != undefined) {
-				_selection[0] = bound(_selection[0]);
-				_selection[1] = bound(_selection[1]);
-			}
-			updatTextDisplay();
-			console.log(state());
-		}
+		_caret = bound(caret);
+		updatTextDisplay(update);
 	}
 
 	function clickOutsideHandler(e) {
@@ -208,7 +241,9 @@ function TextInput(containerId) {
 	}
 
 	function caretHandler(e) {
-		_textDisplay.setCaret(e.info);
+		_caret = e.info;
+		setSelection();
+		updatTextDisplay(CARET);
 	}
 }
 

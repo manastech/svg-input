@@ -9,49 +9,157 @@ function TextDisplay() {
 	const BLOCK = "\u2588";
 	var self = this;
 	var _data = "";
-	var _width = 100;
+	var _width = 300;
 	var _height = 100;
 	var _margin = 5;
 	var _background;
 	var _container;
 	var _svg;
+	var _selection;
 	var _IBeam;
 	var _IBeamInterval;
 	var _focus;
 	var _lines;
 	var _words;
 	var _chars;
+	var _fontMeasures = [];
+	var _wordMeasures = [];
 
-	//on click set caret position
-	//Arrow up/down find near char (selection)
-	//page up/down caret first position scroll (selection)
-	//set selection
 	//drag text cursor
-	//caret width for selection color blue and blend mode difference
-	//if empty set caret 0
-	//separate prototypes
-	//first word in line too long skip return
+	//scroll
+	//autoscroll
+
+	//prototype.move, prototype.offset, prototype.position
+	//remove wordMeasures, wordBounds, gc (use lastChar position + charMeasur) bublechanges, update line word char
+	//remove unnecesary getBBox
+	//predefined lineHeight
+	
+	//appendCharAt
+	//removeCharAt
 
 	function init() {
 		_svg = document.createElementNS(NS,"svg");
 		_svg.addEventListener("click", clickHandler);
 		_background = _svg.appendChild(document.createElementNS(NS,"rect"));
+		_selection = _svg.appendChild(document.createElementNS(NS,"g"));
 		_container = _svg.appendChild(document.createElementNS(NS,"g"));
 		_IBeam = document.createElementNS(NS,"rect");
 		_IBeam.setAttributes({width:1, style:"fill:#000000;"});
+		_selection.setAtt
 		self.setFocus(false);
 		self.svg = _svg;
+		garbageCollector();
 	}
 
-	self.setData = function(value) {
+	self.setText = function(value) {
 		_data = value;
 		update();
 	}
+
+	/*self.appendChar = function(char) {
+		char = char.replace(/ /g, NBSP);
+		var empty = !_data.length;
+		if(empty) {
+			clear();
+		}
+		_data = (_data || "") + char;
+		var string = _data;
+		var word = string.scan(/(\S+|\s+)/g).lastElement();
+		var newWord = word.length == 1;
+		var lineNode, wordNode, wordBounds, charBounds, dx, transform;
+		if(newWord) {
+			dx = 0;
+			if(empty) {
+				x = _margin;
+				y = _margin;
+			} else {
+				wordBounds = _words.lastElement().node.getBBox();
+				transform = getTransform(_words.lastElement().node.firstChild.firstChild);
+				x = transform.x + wordBounds.width;
+				y = transform.y;
+			}
+			wordNode = _container.appendChild(document.createElementNS(NS, "g"));
+			_words.push({node:wordNode, chars:[]});
+		} else {
+			wordNode =  _words.lastElement().node;
+			wordBounds = wordNode.getBBox();
+			dx = wordBounds.width;
+			transform = getTransform(wordNode.firstChild.firstChild);
+			x = transform.x;
+			y = transform.y;
+		}
+		wrapper = wordNode.appendChild(document.createElementNS(NS, "g"));
+		charNode = wrapper.appendChild(document.createElementNS(NS, "text"));
+		charNode.textContent = char;
+		charNode.setAttributes({
+			class: "char",
+			x: dx,
+			"alignment-baseline": "hanging"
+		});
+		charBounds = charNode.getBBox();
+		_chars.push(wrapper);
+		_words.lastElement().chars.push(charNode);
+		var newLine = x + charBounds.width > _width || empty;
+		var wrap = newLine && !newWord && !empty;
+		if(newLine) {
+			var chars = [];
+			if(wrap) {
+				var length = _lines.lastElement().words.lastElement().length;
+				var start = _lines.lastElement().chars.length - length;
+				chars = _lines.lastElement().chars.splice(start, length);
+				_lines.lastElement().words.remove(wordNode);
+			}
+			chars.push(wrapper);
+			lineNode = _container.appendChild(document.createElementNS(NS, "g"));
+			_lines.push({node:lineNode, words:[wordNode], chars:chars});
+			x = _margin;
+			y += empty? 0 : charBounds.height;
+		} else {
+			lineNode = _lines.lastElement().node;
+			_lines.lastElement().chars.push(wrapper);
+		}
+		lineNode.appendChild(wordNode);
+		charNode.setAttributes({
+			"data-char":_chars.lastIndex(),
+			"data-word":_words.lastIndex(),
+			"data-line":_lines.lastIndex(),
+			transform:"translate(" + x + "," + y + ")"
+		});
+		_fontMeasures[char] = _fontMeasures[char] || charBounds.width;
+		_wordMeasures[word] = wordNode.getBBox();
+	}*/
 
 	self.setCaret = function (value) {
 		var bounds = _chars[Math.max(0, Math.min(_chars.length - 1, value))].getBBox();
 		_IBeam.setAttributes({x:bounds.x + (value == _chars.length? bounds.width : 0), y:bounds.y, height:bounds.height});
 		setIBeam(true);
+	}
+
+	self.getCaretPosition = function() {
+		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + self.getLineHeight() / 2};
+	}
+
+	self.getLineHeight = function() {
+		var lineBounds = _lines.firstElement().node.getBBox();
+		return lineBounds.height;
+	}
+
+	self.setSelection = function() {
+		while(_selection.firstChild) {
+			_selection.removeChild(_selection.firstChild);
+		}
+		_chars.forEach(function (char) {
+			char.firstChild.setAttributes({style:"fill:#000000"});
+		});
+		if(!arguments.length || arguments[0] == arguments[1]) return;
+		var from = Math.min(arguments[0], arguments[1]);
+		var to = Math.max(arguments[0], arguments[1]);
+		var path = _selection.appendChild(document.createElementNS(NS, "path"));
+		path.setAttributes({d:getPath(from, to), fill:"#0066ff"});
+		for (var index = from; index < to && index < _chars.length; index++) {
+			_chars[index].firstChild.setAttributes({style:"fill:#ffffff"});
+		}
+		setIBeam(false);
 	}
 
 	self.setMargin = function(value) {
@@ -78,39 +186,119 @@ function TextDisplay() {
 		_background.setAttributes({style:"fill:#dddddd;stroke-width:" + (value? 2 : 0) + ";stroke:rgb(0,0,0)"});
 	}
 
-	function update() {
+	self.getNearestCaretPosition = function(point, contour) {
+		if(!_data.length) return {position:0, insertBefore:false};
+		var position, charNode, charBounds, lineBounds;
+		var insertBefore = false;
+		var dataChar;
+		var containerBounds = _container.getBBox();
+		var before = point.y <= containerBounds.y;
+		var after = point.y > containerBounds.y + containerBounds.height;
+		if(before) {
+			charNode = getNearestCharInLine(_lines.firstElement().node, point.x);
+		} else if (after) {
+			charNode = getNearestCharInLine(_lines.lastElement().node, point.x);
+		} else {
+			_lines.every(function (line) {
+				lineBounds = line.node.getBBox();
+				var match = point.y > lineBounds.y && point.y <= lineBounds.y + lineBounds.height ;
+				if (match) {
+					if(contour) {
+						charNode = point.x < lineBounds.x? line.chars.firstElement() : line.chars.lastElement();
+						insertBefore = charNode == line.chars.lastElement() && line != _lines.lastElement();
+					} else {
+						charNode = getNearestCharInLine(line, point.x);
+					}
+				}
+				return charNode == undefined;
+			});
+		}
+		charBounds = charNode.getBBox();
+		dataChar = charNode.firstChild.getAttribute("data-char");
+		position = Number(dataChar) + point.x > (charBounds.x + charBounds.width / 2)? 1 : 0;
+		return {position:position, insertBefore:insertBefore};
+	}
+
+	function getNearestCharInLine(line, x) {
+		var charNode;
+		line.chars.every(function (char) {
+			var charBounds = char.getBBox();
+			if(x < charBounds.x || x < charBounds.x + charBounds.width || char == line.chars.lastElement()) {
+				charNode = char;
+			}
+			return charNode == undefined;
+		});
+		return charNode;
+	}
+
+	function getPath() {
+		var from = Math.max(0,  Math.min(arguments[0], arguments[1]));
+		var to = Math.min(_chars.length - 1, Math.max(arguments[0], arguments[1]));
+		var end = arguments[0] == _chars.length || arguments[1] == _chars.length;
+		var fromBounds = _chars[from].getBBox();
+		var toBounds = _chars[to].getBBox();
+		var range = [Number(_chars[from].firstChild.getAttribute("data-line")), Number(_chars[to].firstChild.getAttribute("data-line"))];
+		var path = ""; 
+		for (var index = range[0]; index <= range[1]; index++) {
+			var line = _lines[index].node;
+			var bounds = line.getBBox();
+			var rect = {left:bounds.x, top:bounds.y, right:bounds.x + bounds.width, bottom:bounds.y + bounds.height};
+			if(index == range[0]) {
+				rect.left = fromBounds.x;
+			}
+			if(index == range[1]) {
+				rect.right = toBounds.x + (end? toBounds.width : 0);
+			}
+			rect.left = Math.round(rect.left);
+			rect.top = Math.round(rect.top);
+			rect.right = Math.round(rect.right);
+			rect.bottom = Math.round(rect.bottom);
+			path += "M" + rect.left + " " + rect.top;
+			path += "L" + rect.right + " " + rect.top;
+			path += "L" + rect.right + " " + rect.bottom;
+			path += "L" + rect.left + " " + rect.bottom + "Z";
+		}
+		return path;
+	}
+
+	function clear() {
 		while (_container.firstChild) {
 		    _container.removeChild(_container.firstChild);
 		}
-		var string = _data || NBSP;
-		var words = string.scan(/(\S+|\s+)/g);
-		var chars, position, x, y, lineNode, wordNode, wordCharNodes, charNode, wrapper;
 		_lines = [];
 		_words = [];
 		_chars = [];
+	}
+
+	function update() {
+		clear();
+		var string = _data || NBSP;
+		var words = string.scan(/(\S+|\s+)/g);
+		var chars, dx, x, y, lineNode, wordNode, wordCharNodes, charNode, wrapper;
 		words.forEach(function(word) {
 			wordNode = _container.appendChild(document.createElementNS(NS, "g"));
 			wordCharNodes = [];
 			word = word.replace(/ /g, NBSP);
 			chars = word.split("");
-			position = 0;
+			dx = 0;
 			chars.forEach(function(char) {
 				wrapper = wordNode.appendChild(document.createElementNS(NS, "g"));
 				charNode = wrapper.appendChild(document.createElementNS(NS, "text"));
 				charNode.textContent = char;
 				charNode.setAttributes({
+					x: dx,
 					class: "char",
-					x: position,
 					"alignment-baseline": "hanging",
-					"data-line":_lines.length,
-					"data-word":_words.length,
-					"data-char":_chars.length
+					"data-char":_chars.length,
+					"data-word":_words.length
 				});
 				wordCharNodes.push(wrapper);
 				_chars.push(wrapper);
-				position += charNode.getBBox().width;
+				_fontMeasures[char] = _fontMeasures[char] || charNode.getBBox().width;
+				dx += _fontMeasures[char];
 			});
-			var wordBounds = wordNode.getBBox();
+			_wordMeasures[word] = _wordMeasures[word] || wordNode.getBBox();
+			var wordBounds = _wordMeasures[word];
 			if(lineNode == undefined || (x + wordBounds.width > _width - _margin * 2 && !word.match(NBSP))) {
 				x = _margin;
 				y = _lines.length? y + wordBounds.height : _margin;
@@ -120,8 +308,9 @@ function TextDisplay() {
 			lineNode.appendChild(wordNode);
 			wordCharNodes.forEach(function(charNode) {
 				charNode.firstChild.setAttributes({
-					transform:"translate(" + x + "," + y + ")",
 					"data-line":_lines.length - 1,
+					x:x + Number(charNode.firstChild.getAttributes().x),
+					y:y
 				});
 			});
 			_words.push({node:wordNode, chars:wordCharNodes});
@@ -130,12 +319,6 @@ function TextDisplay() {
 			x += wordBounds.width;
 		});
 		_background.setAttributes({width:_width, height:_height});
-	}
-
-	function setAttributesTo(target, attributes) {
-		for (var key in attributes) {
-			target.setAttribute(key, attributes[key]);
-		};
 	}
 
 	function toogleIBeam() {
@@ -156,71 +339,6 @@ function TextDisplay() {
 		}
 	}
 
-	/*
-	function getSegments(rectangle) {
-		var points = [
-			{x:rectangle.x, y:rectangle.y},
-			{x:rectangle.x + rectangle.width, y:rectangle.y},
-			{x:rectangle.x + rectangle.width, y:rectangle.y + rectangle.height},
-			{x:rectangle.x, y:rectangle.y + rectangle.height}
-		]
-		var segments = [
-			{a:points[0], b:points[1]},
-			{a:points[1], b:points[2]},
-			{a:points[2], b:points[3]},
-			{a:points[3], b:points[0]}
-		]
-		return segments;
-	}
-
-	function calculateShortestDistance(point, segment) {
-		var numerator = (point.x - segment.a.x) * (segment.b.x - segment.a.x) + (point.y - segment.a.y) * (segment.b.y - segment.a.y);
-		var denomenator = (segment.b.x - segment.a.x) * (segment.b.x - segment.a.x) + (segment.b.y - segment.a.y) * (segment.b.y - segment.a.y);
-		var r = numerator / denomenator;
-	    var s = ((segment.a.y - point.y) * (segment.b.x - segment.a.x) - (segment.a.x - point.x) * (segment.b.y - segment.a.y)) / denomenator;
-	    var distance;
-		if (r >= 0 && r <= 1) {
-			distance = Math.abs(s) * Math.sqrt(denomenator);;
-		} else {
-			var distA = (point.x - segment.a.x) * (point.x - segment.a.x) + (point.y - segment.a.y) * (point.y - segment.a.y);
-			var distB = (point.x - segment.b.x) * (point.x - segment.b.x) + (point.y - segment.b.x) * (point.y - segment.b.y);
-			distance = Math.sqrt(Math.min(distA, distB));
-		}
-		return distance;
-	}
-
-	function findNearestChar(point) {
-		var shortestDistance = Number.MAX_VALUE;
-		var nearestChar;
-		_chars.forEach(function (char) {
-			var boundingBox = char.getBBox();
-			var segments = getSegments(boundingBox);
-			segments.forEach(function (segment) {
-				var distance = calculateShortestDistance(point, segment);
-				if(distance < shortestDistance) {
-					shortestDistance = distance;
-					nearestChar = char;
-				}
-			});
-		});
-		return nearestChar;
-	}
-	*/
-
-	function findNearestCharInLine(x, chars) {
-		var nearestChar;
-		if(chars != undefined) {
-			chars.every(function (char) {
-				var bounds = char.getBBox();
-				if(x < bounds.x || x < bounds.x + bounds.width || char == chars.lastElement()) {
-					nearestChar = char;
-				}
-				return nearestChar == undefined;
-			});
-		}
-		return nearestChar;
-	}
-
 	function getMouseCoordinates(e) {
 		var mouse = {};
 		if (e.pageX || e.pageY) { 
@@ -235,73 +353,36 @@ function TextDisplay() {
 		return mouse;
 	}
 
+
+	function garbageCollector() {
+		var persist = [];
+		_data.scan(/(\S+|\s+)/g).forEach(function (word) {
+			persist[word] = true;
+		});
+		for (var key in _wordMeasures) {
+			if(_wordMeasures.hasOwnProperty(key)) {
+				if(!persist[key]) {
+					delete _wordMeasures[key];
+				}
+			}
+		};
+		window.setTimeout(garbageCollector, 1000);
+	}
+
 	function clickHandler(e) {
 		var mouse = getMouseCoordinates(e);
-		var index = getNearestIndex(mouse);
-		var index, charNode, bounds;
+		var caret;
 		var dataChar = e.target.getAttribute("data-char");
 		if(dataChar != undefined) {
 			charNode = _chars[dataChar];
-			bounds = charNode.getBBox();
+			charBounds = charNode.getBBox();
 		} else {
-			_lines.every(function (line) {
-				bounds = line.node.getBBox();
-				if(mouse.y < bounds.y) {
-					charNode = findNearestCharInLine(mouse.x, line.chars);
-					bounds = charNode.getBBox();
-				} else if (mouse.y < bounds.y + bounds.height) {
-					charNode = mouse.x < bounds.x? line.chars.firstElement() : line.chars.lastElement();
-					bounds = undefined;
-				} else if (line == _lines.lastElement()) {
-					charNode = findNearestCharInLine(mouse.x, line.chars);
-					bounds = charNode.getBBox();
-				}
-				return charNode == undefined;
-			});
-			if(charNode == undefined) {
-				charNode = _chars.firstElement();
-			}
-			dataChar = charNode.firstChild.getAttribute("data-char");
+			caret = self.getNearestCaretPosition(mouse, true);
 		}
-		index = Number(dataChar);
-		if(bounds != undefined && _data.length) {
-			index += mouse.x > (bounds.x + bounds.width / 2)? 1 : 0;
-		}
-		self.dispatchEvent(new Event(Event.CARET, index));
+		self.setCaret(caret.position - (caret.insertBefore? 1 : 0), true);
+		self.setSelection();
+		self.dispatchEvent(new Event(Event.CARET, caret.position));
 	}
 
 	init();
-}
-
-String.prototype.scan = function (regex) {
-	if (!regex.global) throw "Scan Error";
-		var self = this;
-		var match, occurrences = [];
-	while (match = regex.exec(self)) {
-		match.shift();
-		occurrences.push(match[0]);
-	}
-	return occurrences;
-};
-
-Element.prototype.setAttributes = function(attributes) {
-	for (var key in attributes) {
-		this.setAttribute(key, attributes[key]);
-	};
-}
-
-Element.prototype.getAttributes = function() {
-	var attributes = {};
-	for (var key in this) {
-		attributes[key] = this.getAttribute(key);
-	};
-	return attributes;
-}
-
-Array.prototype.firstElement = function() {
-    return this[0];
-}
-
-Array.prototype.lastElement = function() {
-    return this[this.length - 1];
 }
