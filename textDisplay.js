@@ -33,7 +33,7 @@ function TextDisplay() {
 	//remove wordMeasures, wordBounds, gc (use lastChar position + charMeasur) bublechanges, update line word char
 	//remove unnecesary getBBox
 	//predefined lineHeight
-	
+
 	//appendCharAt
 	//removeCharAt
 
@@ -195,9 +195,9 @@ function TextDisplay() {
 		var before = point.y <= containerBounds.y;
 		var after = point.y > containerBounds.y + containerBounds.height;
 		if(before) {
-			charNode = getNearestCharInLine(_lines.firstElement().node, point.x);
+			charNode = getNearestCharInLine(_lines.firstElement(), point.x);
 		} else if (after) {
-			charNode = getNearestCharInLine(_lines.lastElement().node, point.x);
+			charNode = getNearestCharInLine(_lines.lastElement(), point.x);
 		} else {
 			_lines.every(function (line) {
 				lineBounds = line.node.getBBox();
@@ -215,7 +215,7 @@ function TextDisplay() {
 		}
 		charBounds = charNode.getBBox();
 		dataChar = charNode.firstChild.getAttribute("data-char");
-		position = Number(dataChar) + point.x > (charBounds.x + charBounds.width / 2)? 1 : 0;
+		position = Number(dataChar) + (point.x > (charBounds.x + charBounds.width / 2)? 1 : 0);
 		return {position:position, insertBefore:insertBefore};
 	}
 
@@ -371,17 +371,19 @@ function TextDisplay() {
 
 	function clickHandler(e) {
 		var mouse = getMouseCoordinates(e);
-		var caret;
+		var caret, position;
 		var dataChar = e.target.getAttribute("data-char");
 		if(dataChar != undefined) {
 			charNode = _chars[dataChar];
 			charBounds = charNode.getBBox();
+			position = Number(dataChar) + (mouse.x > (charBounds.x + charBounds.width / 2)? 1 : 0);
 		} else {
 			caret = self.getNearestCaretPosition(mouse, true);
+			position = caret.position - (caret.insertBefore? 1 : 0);
 		}
-		self.setCaret(caret.position - (caret.insertBefore? 1 : 0), true);
+		self.setCaret(position);
 		self.setSelection();
-		self.dispatchEvent(new Event(Event.CARET, caret.position));
+		self.dispatchEvent(new Event(Event.CARET, position));
 	}
 
 	init();
