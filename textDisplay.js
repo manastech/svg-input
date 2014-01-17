@@ -12,10 +12,13 @@ function TextDisplay() {
 	var _width = 300;
 	var _height = 100;
 	var _margin = 5;
+	var _fontSize = 14;
 	var _background;
 	var _container;
 	var _svg;
+	var _caretPosition;
 	var _selection;
+	var _selectionArea;
 	var _IBeam;
 	var _IBeamInterval;
 	var _focus;
@@ -25,7 +28,6 @@ function TextDisplay() {
 	var _fontMeasures = [];
 	var _wordMeasures = [];
 
-	//drag text cursor
 	//scroll
 	//autoscroll
 
@@ -36,17 +38,15 @@ function TextDisplay() {
 
 	//appendCharAt
 	//removeCharAt
-	//crossbrowser
 
 	function init() {
 		_svg = document.createElementNS(NS,"svg");
-		_svg.addEventListener("click", clickHandler);
+		_svg.addEventListener("mousedown", mouseHandler);
 		_background = _svg.appendChild(document.createElementNS(NS,"rect"));
-		_selection = _svg.appendChild(document.createElementNS(NS,"g"));
+		_selectionArea = _svg.appendChild(document.createElementNS(NS,"g"));
 		_container = _svg.appendChild(document.createElementNS(NS,"g"));
 		_IBeam = document.createElementNS(NS,"rect");
 		_IBeam.setAttributes({width:1, style:"fill:#000000;"});
-		_selection.setAtt
 		self.setFocus(false);
 		self.svg = _svg;
 		garbageCollector();
@@ -131,6 +131,7 @@ function TextDisplay() {
 	}*/
 
 	self.setCaret = function (value) {
+		_caretPosition = value;
 		var bounds = _chars[Math.max(0, Math.min(_chars.length - 1, value))].getBBox();
 		_IBeam.setAttributes({x:bounds.x + (value == _chars.length? bounds.width : 0), y:bounds.y, height:bounds.height});
 		setIBeam(true);
@@ -146,8 +147,9 @@ function TextDisplay() {
 	}
 
 	self.setSelection = function() {
-		while(_selection.firstChild) {
-			_selection.removeChild(_selection.firstChild);
+		_selection = arguments;
+		while(_selectionArea.firstChild) {
+			_selectionArea.removeChild(_selectionArea.firstChild);
 		}
 		_chars.forEach(function (char) {
 			char.firstChild.setAttributes({style:"fill:#000000"});
@@ -155,7 +157,7 @@ function TextDisplay() {
 		if(!arguments.length || arguments[0] == arguments[1]) return;
 		var from = Math.min(arguments[0], arguments[1]);
 		var to = Math.max(arguments[0], arguments[1]);
-		var path = _selection.appendChild(document.createElementNS(NS, "path"));
+		var path = _selectionArea.appendChild(document.createElementNS(NS, "path"));
 		path.setAttributes({d:getPath(from, to), fill:"#0066ff"});
 		for (var index = from; index < to && index < _chars.length; index++) {
 			_chars[index].firstChild.setAttributes({style:"fill:#ffffff"});
@@ -289,19 +291,20 @@ function TextDisplay() {
 				charNode.setAttributes({
 					x: dx,
 					class: "char",
+					"font-size":_fontSize + "px",
 					"data-char":_chars.length,
 					"data-word":_words.length
 				});
 				wordCharNodes.push(wrapper);
 				_chars.push(wrapper);
-				_fontMeasures[char] = _fontMeasures[char] || charNode.getBBox().width;
+				_fontMeasures[char] = _fontMeasures[char] || wrapper.getBBox().width;
 				dx += _fontMeasures[char];
 			});
 			_wordMeasures[word] = _wordMeasures[word] || wordNode.getBBox();
 			var wordBounds = _wordMeasures[word];
 			if(lineNode == undefined || (x + wordBounds.width > _width - _margin * 2 && !word.match(NBSP))) {
 				x = _margin;
-				y = _lines.length? y + wordBounds.height : _margin;
+				y = _lines.length? y + wordBounds.height : _margin + _fontSize;
 				lineNode = _container.appendChild(document.createElementNS(NS, "g"));
 				_lines.push({node:lineNode, words:[], chars:[]});
 			}
@@ -369,21 +372,47 @@ function TextDisplay() {
 		window.setTimeout(garbageCollector, 1000);
 	}
 
-	function clickHandler(e) {
+	function mouseHandler(e) {
+		switch(e.type) {
+			case "mousedown":
+				window.addEventListener("mousemove", mouseHandler);
+				window.addEventListener("mouseup", mouseHandler);
+				self.setSelection();
+				break;
+			case "mouseup":
+				window.removeEventListener("mousemove", mouseHandler);
+				window.removeEventListener("mouseup", mouseHandler);
+				break;
+		}
+		var caret, caretPosition;
 		var mouse = getMouseCoordinates(e);
-		var caret, position;
 		var dataChar = e.target.getAttribute("data-char");
 		if(dataChar != undefined) {
 			charNode = _chars[dataChar];
 			charBounds = charNode.getBBox();
-			position = Number(dataChar) + (mouse.x > (charBounds.x + charBounds.width / 2)? 1 : 0);
+			caretPosition = Number(dataChar) + (mouse.x > (charBounds.x + charBounds.width / 2)? 1 : 0);
 		} else {
 			caret = self.getNearestCaretPosition(mouse, true);
-			position = caret.position - (caret.insertBefore? 1 : 0);
+			caretPosition = caret.position - (caret.insertBefore? 1 : 0);
 		}
-		self.setCaret(position);
-		self.setSelection();
-		self.dispatchEvent(new Event(Event.CARET, position));
+		switch(e.type) {
+			case "mousedown":
+				self.setCaret(caretPosition);
+				break;
+			case "mousemove":
+				self.setSelection(_caretPosition, caretPosition);
+				break;
+			case "mouseup":
+				self.setCaret(caretPosition);
+				self.dispatchEvent(new Event(Event.CARET, _caretPosition));
+				self.dispatchEvent(new Event(Event.SELECTION, _selection));
+				break;
+		}
+		
+	}
+
+	function mouseMoveHandler(e) {
+		self.setSelection(_caretPosition);
 	}
 
 	init();

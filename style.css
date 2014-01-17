@@ -6,7 +6,7 @@
 	user-select: none;
 	font-family: "Arial";
 	charNode-rendering: "geometricPrecision";
-	dominant-baseline: "hanging";
-	font-size:15px;
+	margin: 0px;
+	padding: 0px;
 	fill:#000000
 }

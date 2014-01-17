@@ -15,6 +15,7 @@ function TextInput(containerId) {
 	var _container = document.getElementById(containerId);
 	var _textDisplay = new TextDisplay();
 	_textDisplay.addEventListener(Event.CARET, caretHandler);
+	_textDisplay.addEventListener(Event.SELECTION, selectionHandler);
 	_container.appendChild(_textDisplay.svg);
 	_container.addEventListener("click", clickHandler);
 	this.invalidate();
@@ -244,8 +245,12 @@ function TextInput(containerId) {
 
 	function caretHandler(e) {
 		_caret = e.info;
-		setSelection();
-		updatTextDisplay(CARET);
+		console.log(state());
+	}
+	
+	function selectionHandler(e) {
+		_selection = e.info;
+		console.log(state());
 	}
 }
 
