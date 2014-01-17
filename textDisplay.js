@@ -3,10 +3,10 @@ function TextDisplay() {
 
 	EventDispatcher.call(this);
 
-	const NS = "http://www.w3.org/2000/svg";
-	const NBSP = "\u00A0";
-	const ZWSP = "\u200B";
-	const BLOCK = "\u2588";
+	var NS = "http://www.w3.org/2000/svg";
+	var NBSP = "\u00A0";
+	var ZWSP = "\u200B";
+	var BLOCK = "\u2588";
 	var self = this;
 	var _data = "";
 	var _width = 300;
@@ -36,6 +36,7 @@ function TextDisplay() {
 
 	//appendCharAt
 	//removeCharAt
+	//crossbrowser
 
 	function init() {
 		_svg = document.createElementNS(NS,"svg");
@@ -288,7 +289,6 @@ function TextDisplay() {
 				charNode.setAttributes({
 					x: dx,
 					class: "char",
-					"alignment-baseline": "hanging",
 					"data-char":_chars.length,
 					"data-word":_words.length
 				});

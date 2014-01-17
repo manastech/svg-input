@@ -3,9 +3,9 @@ function TextInput(containerId) {
 	EventDispatcher.call(this);
 	InvalidateElement.call(this);
 
-	const ALL = "all";
-	const CARET = "caret";
-	const NONE = "none";
+	var ALL = "all";
+	var CARET = "caret";
+	var NONE = "none";
 	var self = this;
 	var _caret = 0;
 	var _selection;
@@ -98,16 +98,18 @@ function TextInput(containerId) {
 	}
 
 	function keyPressHandler(e) {
-		e.preventDefault();
-		var char = String.fromCharCode(e.keyCode);
-		var start = _selection != undefined? Math.min(_selection[0], _selection[1]) : _caret;
-		var length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 0;
-		_string = _string.splice(start, length, char);
-		setSelection();
-		_caret++;
-		updatTextDisplay(ALL);
-		//_textDisplay.appendChar(char);
-		//_textDisplay.setCaret(_caret);
+		if(e.charCode) {
+			e.preventDefault();
+			var char = String.fromCharCode(e.charCode);
+			var start = _selection != undefined? Math.min(_selection[0], _selection[1]) : _caret;
+			var length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 0;
+			_string = _string.splice(start, length, char);
+			setSelection();
+			_caret++;
+			updatTextDisplay(ALL);
+			//_textDisplay.appendChar(char);
+			//_textDisplay.setCaret(_caret);
+		}
 	}
 
 	function keyDownHandler(e) {
