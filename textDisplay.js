@@ -35,6 +35,7 @@ function TextDisplay() {
 	//remove wordMeasures, wordBounds, gc (use lastChar position + charMeasur) bublechanges, update line word char
 	//remove unnecesary getBBox
 	//predefined lineHeight
+	//doble click select word
 
 	//appendCharAt
 	//removeCharAt
