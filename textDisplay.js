@@ -32,6 +32,7 @@ function TextDisplay(container) {
 	var _chars;
 	var _fontMeasures = [];
 
+	//force scrolls withot fake
 	//autoscroll
 	//space + wordboundary?
 	//one space per block
