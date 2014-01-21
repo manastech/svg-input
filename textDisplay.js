@@ -18,7 +18,6 @@ function TextDisplay(container) {
 	var _container = container;
 	var _fakeScroll;
 	var _wrapper;
-	var _dummy;
 	var _textFlow;
 	var _svg;
 	var _caretPosition;
@@ -32,11 +31,11 @@ function TextDisplay(container) {
 	var _chars;
 	var _fontMeasures = [];
 
-	//force scrolls withot fake
-	//autoscroll
+	//autoscroll left & top
 	//space + wordboundary?
 	//one space per block
-
+	//use insertBefore on key up/down
+	
 	//cascade changes, self.render data -line -block -char
 	//appendCharAt
 	//removeCharAt
@@ -44,14 +43,9 @@ function TextDisplay(container) {
 	//firefox font size
 
 	function init() {
-		_container.addEventListener("scroll", scrollHandler);
-		_fakeScroll = _container.parentNode.appendChild(document.createElement("div"))
-		_fakeScroll.setAttribute("id","fakeScroll");
-		_fakeScroll.addEventListener("mousedown", mouseHandler);
-		_fakeScroll.addEventListener("dblclick", doubleClickHandler);
-		_dummy = _container.appendChild(document.createElement("div"));
-		_dummy.setAttribute("id","dummy");
-		_wrapper = _fakeScroll.appendChild(document.createElement("div"));
+		_container.addEventListener("mousedown", mouseHandler);
+		_container.addEventListener("dblclick", doubleClickHandler);
+		_wrapper = _container.appendChild(document.createElement("div"));
 		_wrapper.setAttribute("id","wrapper");
 		_svg = _wrapper.appendChild(document.createElementNS(NS,"svg"));
 		_selectionArea = _svg.appendChild(document.createElementNS(NS,"g"));
@@ -155,17 +149,17 @@ function TextDisplay(container) {
 
 	self.render = function() {
 		draw(_container.offsetWidth, _container.offsetHeight);
-		var overFlowX = _data.length && _width > _container.offsetWidth;
-		var overFlowY = _data.length && _height > _container.offsetHeight;
-		_container.setAttribute("style", "width:" + $(_container.parentNode).innerWidth() + "px;height:" + $(_container.parentNode).innerHeight() + "px;overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y:" + (overFlowY? "scroll" : "hidden") + ";");
+		var overFlowX = _data.length && _width > $(_container).innerWidth();
+		var overFlowY = _data.length && _height > $(_container).innerHeight();
+		_container.setAttribute("style", "overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y:" + (overFlowY? "scroll" : "hidden") + ";");
 		var width = overFlowX? _container.clientWidth : _width;
 		var height = overFlowY? _container.clientHeight : _height;
 		if(overFlowX || overFlowY) {
 			draw(width, height);
 		}
-		_dummy.setAttribute("style", "width:" + _width + "px;height:" + _height + "px;");
+		if(!overFlowX) _container.scrollLeft = 0;
+		if(!overFlowY) _container.scrollTop = 0;
 		_wrapper.setAttribute("style", "width:" + _width + "px;height:" + _height + "px;");
-		_fakeScroll.setAttribute("style", "width:" + _container.clientWidth + "px;height:" + _container.clientHeight + "px;overflow:hidden;position:absolute;top:0px;left:0px");
 	}
 
 	function draw(width, height) {
@@ -373,11 +367,6 @@ function TextDisplay(container) {
 			self.setSelection(Number(block.chars.firstElement().getAttribute("data-char")), Number(block.chars.lastElement().getAttribute("data-char")) + 1);
 			self.dispatchEvent(new Event(Event.SELECTION, _selection));
 		}
-	}
-
-	function scrollHandler(e) {
-		_fakeScroll.scrollTop = e.target.scrollTop;
-		_fakeScroll.scrollLeft = e.target.scrollLeft;
 	}
 
 	init();

@@ -11,16 +11,12 @@ function TextInput(containerId) {
 	var _selection;
 	var _string = "";
 	var _container;
-	var _scroll;
 	var _textDisplay;
 	
 	function init(containerId) {
 		_container = document.getElementById(containerId);
-		_container.addEventListener("mousewheel", mouseWheelHandler);
 		_container.addEventListener("click", clickHandler);
-		_scroll = _container.appendChild(document.createElement("div"));
-		_scroll.setAttribute("id", "scroll");
-		_textDisplay = new TextDisplay(_scroll);
+		_textDisplay = new TextDisplay(_container);
 		_textDisplay.addEventListener(Event.CARET, caretHandler);
 		_textDisplay.addEventListener(Event.SELECTION, selectionHandler);
 		self.invalidate();
@@ -252,11 +248,6 @@ function TextInput(containerId) {
 	function selectionHandler(e) {
 		setSelection.apply(null, e.info)
 		console.log(state());
-	}
-
-	function mouseWheelHandler(e) {
-		_scroll.scrollTop += e.deltaY;
-		_scroll.scrollLeft += e.deltaX;
 	}
 
 	init(containerId);
