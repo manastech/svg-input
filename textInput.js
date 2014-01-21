@@ -10,24 +10,24 @@ function TextInput(containerId) {
 	var _caret = 0;
 	var _selection;
 	var _string = "";
-	var _width = 100;
-	var _height = 100;
-	var _container = document.getElementById(containerId);
-	var _textDisplay = new TextDisplay();
-	_textDisplay.addEventListener(Event.CARET, caretHandler);
-	_textDisplay.addEventListener(Event.SELECTION, selectionHandler);
-	_container.appendChild(_textDisplay.svg);
-	_container.addEventListener("click", clickHandler);
-	this.invalidate();
-
-	self.setSize = function(width, height) {
-		_width = width;
-		_height = height;
-		this.invalidate();
+	var _container;
+	var _scroll;
+	var _textDisplay;
+	
+	function init(containerId) {
+		_container = document.getElementById(containerId);
+		_container.addEventListener("mousewheel", mouseWheelHandler);
+		_container.addEventListener("click", clickHandler);
+		_scroll = _container.appendChild(document.createElement("div"));
+		_scroll.setAttribute("id", "scroll");
+		_textDisplay = new TextDisplay(_scroll);
+		_textDisplay.addEventListener(Event.CARET, caretHandler);
+		_textDisplay.addEventListener(Event.SELECTION, selectionHandler);
+		self.invalidate();
 	}
 
 	self.render = function() {
-		_textDisplay.setSize(_width, _height);
+		_textDisplay.render();
 	}
 
 	self.setFocus = function(value) {
@@ -36,11 +36,13 @@ function TextInput(containerId) {
 			document.addEventListener("keypress", keyPressHandler);
 			document.addEventListener("keydown", keyDownHandler);
 			document.addEventListener("click", clickOutsideHandler);
+			$(_container).addClass("focus");
 		} else {
 			_textDisplay.setFocus(false);
 			document.removeEventListener("keypress", keyPressHandler);
 			document.removeEventListener("keydown", keyDownHandler);
 			document.removeEventListener("click", clickOutsideHandler);
+			$(_container).removeClass("focus");
 		}
 	}
 
@@ -106,10 +108,8 @@ function TextInput(containerId) {
 			var length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 0;
 			_string = _string.splice(start, length, char);
 			setSelection();
-			_caret++;
+			_caret = start + 1;
 			updatTextDisplay(ALL);
-			//_textDisplay.appendChar(char);
-			//_textDisplay.setCaret(_caret);
 		}
 	}
 
@@ -214,6 +214,7 @@ function TextInput(containerId) {
 				e.preventDefault();
 				position = _textDisplay.getCaretPosition();
 				position.y += _textDisplay.getLineHeight();
+				console.log(position)
 				caret = _textDisplay.getNearestCaretPosition(position, false).position;
 				if(e.shiftKey) {
 					setSelection(_caret, caret);
@@ -249,11 +250,14 @@ function TextInput(containerId) {
 	}
 	
 	function selectionHandler(e) {
-		_selection = e.info;
+		setSelection.apply(null, e.info)
 		console.log(state());
 	}
-}
 
-String.prototype.splice = function(index, remove, string) {
-    return this.slice(0, index) + string + this.slice(index + Math.abs(remove));
-};
+	function mouseWheelHandler(e) {
+		_scroll.scrollTop += e.deltaY;
+		_scroll.scrollLeft += e.deltaX;
+	}
+
+	init(containerId);
+}

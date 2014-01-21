@@ -1,5 +1,5 @@
 
-function TextDisplay() {
+function TextDisplay(container) {
 
 	EventDispatcher.call(this);
 
@@ -8,13 +8,18 @@ function TextDisplay() {
 	var ZWSP = "\u200B";
 	var BLOCK = "\u2588";
 	var self = this;
+	var CharClass = "char";
 	var _data = "";
-	var _width = 300;
-	var _height = 100;
+	var _width = 100;
+	var _height = 0;
 	var _margin = 5;
 	var _fontSize = 14;
-	var _background;
-	var _container;
+	var _lineHeight;
+	var _container = container;
+	var _fakeScroll;
+	var _wrapper;
+	var _dummy;
+	var _textFlow;
 	var _svg;
 	var _caretPosition;
 	var _selection;
@@ -23,211 +28,204 @@ function TextDisplay() {
 	var _IBeamInterval;
 	var _focus;
 	var _lines;
-	var _words;
+	var _blocks;
 	var _chars;
 	var _fontMeasures = [];
-	var _wordMeasures = [];
 
-	//scroll
 	//autoscroll
+	//space + wordboundary?
+	//one space per block
 
-	//prototype.move, prototype.offset, prototype.position
-	//remove wordMeasures, wordBounds, gc (use lastChar position + charMeasur) bublechanges, update line word char
-	//remove unnecesary getBBox
-	//predefined lineHeight
-	//doble click select word
-
+	//cascade changes, self.render data -line -block -char
 	//appendCharAt
 	//removeCharAt
+	//autoexpand
+	//firefox font size
 
 	function init() {
-		_svg = document.createElementNS(NS,"svg");
-		_svg.addEventListener("mousedown", mouseHandler);
-		_background = _svg.appendChild(document.createElementNS(NS,"rect"));
+		_container.addEventListener("scroll", scrollHandler);
+		_fakeScroll = _container.parentNode.appendChild(document.createElement("div"))
+		_fakeScroll.setAttribute("id","fakeScroll");
+		_fakeScroll.addEventListener("mousedown", mouseHandler);
+		_fakeScroll.addEventListener("dblclick", doubleClickHandler);
+		_dummy = _container.appendChild(document.createElement("div"));
+		_dummy.setAttribute("id","dummy");
+		_wrapper = _fakeScroll.appendChild(document.createElement("div"));
+		_wrapper.setAttribute("id","wrapper");
+		_svg = _wrapper.appendChild(document.createElementNS(NS,"svg"));
 		_selectionArea = _svg.appendChild(document.createElementNS(NS,"g"));
-		_container = _svg.appendChild(document.createElementNS(NS,"g"));
+		_textFlow = _svg.appendChild(document.createElementNS(NS,"g"));
 		_IBeam = document.createElementNS(NS,"rect");
-		_IBeam.setAttributes({width:1, style:"fill:#000000;"});
+		_IBeam.setAttributes({width:1, style:"fill:#000000", "pointer-events":"none"});
+		_fontSize = getFontSize(CharClass);
 		self.setFocus(false);
-		self.svg = _svg;
-		garbageCollector();
 	}
 
 	self.setText = function(value) {
 		_data = value;
-		update();
+		self.render();
 	}
-
-	/*self.appendChar = function(char) {
-		char = char.replace(/ /g, NBSP);
-		var empty = !_data.length;
-		if(empty) {
-			clear();
-		}
-		_data = (_data || "") + char;
-		var string = _data;
-		var word = string.scan(/(\S+|\s+)/g).lastElement();
-		var newWord = word.length == 1;
-		var lineNode, wordNode, wordBounds, charBounds, dx, transform;
-		if(newWord) {
-			dx = 0;
-			if(empty) {
-				x = _margin;
-				y = _margin;
-			} else {
-				wordBounds = _words.lastElement().node.getBBox();
-				transform = getTransform(_words.lastElement().node.firstChild.firstChild);
-				x = transform.x + wordBounds.width;
-				y = transform.y;
-			}
-			wordNode = _container.appendChild(document.createElementNS(NS, "g"));
-			_words.push({node:wordNode, chars:[]});
-		} else {
-			wordNode =  _words.lastElement().node;
-			wordBounds = wordNode.getBBox();
-			dx = wordBounds.width;
-			transform = getTransform(wordNode.firstChild.firstChild);
-			x = transform.x;
-			y = transform.y;
-		}
-		wrapper = wordNode.appendChild(document.createElementNS(NS, "g"));
-		charNode = wrapper.appendChild(document.createElementNS(NS, "text"));
-		charNode.textContent = char;
-		charNode.setAttributes({
-			class: "char",
-			x: dx,
-			"alignment-baseline": "hanging"
-		});
-		charBounds = charNode.getBBox();
-		_chars.push(wrapper);
-		_words.lastElement().chars.push(charNode);
-		var newLine = x + charBounds.width > _width || empty;
-		var wrap = newLine && !newWord && !empty;
-		if(newLine) {
-			var chars = [];
-			if(wrap) {
-				var length = _lines.lastElement().words.lastElement().length;
-				var start = _lines.lastElement().chars.length - length;
-				chars = _lines.lastElement().chars.splice(start, length);
-				_lines.lastElement().words.remove(wordNode);
-			}
-			chars.push(wrapper);
-			lineNode = _container.appendChild(document.createElementNS(NS, "g"));
-			_lines.push({node:lineNode, words:[wordNode], chars:chars});
-			x = _margin;
-			y += empty? 0 : charBounds.height;
-		} else {
-			lineNode = _lines.lastElement().node;
-			_lines.lastElement().chars.push(wrapper);
-		}
-		lineNode.appendChild(wordNode);
-		charNode.setAttributes({
-			"data-char":_chars.lastIndex(),
-			"data-word":_words.lastIndex(),
-			"data-line":_lines.lastIndex(),
-			transform:"translate(" + x + "," + y + ")"
-		});
-		_fontMeasures[char] = _fontMeasures[char] || charBounds.width;
-		_wordMeasures[word] = wordNode.getBBox();
-	}*/
 
 	self.setCaret = function (value) {
 		_caretPosition = value;
-		var bounds = _chars[Math.max(0, Math.min(_chars.length - 1, value))].getBBox();
-		_IBeam.setAttributes({x:bounds.x + (value == _chars.length? bounds.width : 0), y:bounds.y, height:bounds.height});
+		var charNode = _chars[Math.max(0, Math.min(_chars.length - 1, value))];
+		var position = charNode.getPosition();
+		_IBeam.setAttributes({x:position.x + (value == _chars.length? _fontMeasures[charNode.textContent] : 0), y:position.y - _fontSize, height:_lineHeight});
 		setIBeam(true);
 	}
 
 	self.getCaretPosition = function() {
-		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + self.getLineHeight() / 2};
-	}
-
-	self.getLineHeight = function() {
-		var lineBounds = _lines.firstElement().node.getBBox();
-		return lineBounds.height;
+		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + _lineHeight / 2};
 	}
 
 	self.setSelection = function() {
-		_selection = arguments;
 		while(_selectionArea.firstChild) {
 			_selectionArea.removeChild(_selectionArea.firstChild);
 		}
 		_chars.forEach(function (char) {
-			char.firstChild.setAttributes({style:"fill:#000000"});
+			char.setAttributes({style:"fill:#000000"});
 		});
-		if(!arguments.length || arguments[0] == arguments[1]) return;
+		var empty = !arguments.length || arguments[0] == arguments[1];
+		_selection = empty? undefined : arguments;
+		_IBeam.setAttributes({opacity:empty? 1 : 0})
+		if(empty) return;
 		var from = Math.min(arguments[0], arguments[1]);
 		var to = Math.max(arguments[0], arguments[1]);
 		var path = _selectionArea.appendChild(document.createElementNS(NS, "path"));
 		path.setAttributes({d:getPath(from, to), fill:"#0066ff"});
 		for (var index = from; index < to && index < _chars.length; index++) {
-			_chars[index].firstChild.setAttributes({style:"fill:#ffffff"});
+			_chars[index].setAttributes({style:"fill:#ffffff"});
 		}
-		setIBeam(false);
 	}
 
 	self.setMargin = function(value) {
 		_margin = value;
-		update();
-	}
-
-	self.setSize = function(width, height) {
-		_width = width;
-		_height = height;
-		update();
+		self.render();
 	}
 
 	self.setFocus = function(value) {
 		_focus = value;
 		setIBeam(_focus);
 		if(_focus) {
-			_container.appendChild(_IBeam);
+			_textFlow.appendChild(_IBeam);
 		} else {
 			if(_IBeam.parentNode) {
-				_container.removeChild(_IBeam);
+				_textFlow.removeChild(_IBeam);
 			}
 		}
-		_background.setAttributes({style:"fill:#dddddd;stroke-width:" + (value? 2 : 0) + ";stroke:rgb(0,0,0)"});
 	}
 
 	self.getNearestCaretPosition = function(point, contour) {
 		if(!_data.length) return {position:0, insertBefore:false};
-		var position, charNode, charBounds, lineBounds;
+		var position, charNode, dataChar, index;
 		var insertBefore = false;
-		var dataChar;
-		var containerBounds = _container.getBBox();
-		var before = point.y <= containerBounds.y;
-		var after = point.y > containerBounds.y + containerBounds.height;
+		var before = point.y <= _margin;
+		var after = point.y > _chars.lastElement().getPosition().y;
 		if(before) {
 			charNode = getNearestCharInLine(_lines.firstElement(), point.x);
 		} else if (after) {
 			charNode = getNearestCharInLine(_lines.lastElement(), point.x);
 		} else {
+			index = 0;
 			_lines.every(function (line) {
-				lineBounds = line.node.getBBox();
-				var match = point.y > lineBounds.y && point.y <= lineBounds.y + lineBounds.height ;
+				var top = index * _lineHeight + _margin;
+				var bottom = top + _lineHeight;
+				var match = point.y > top && point.y <= bottom ;
 				if (match) {
 					if(contour) {
-						charNode = point.x < lineBounds.x? line.chars.firstElement() : line.chars.lastElement();
+						charNode = point.x < _margin? line.chars.firstElement() : line.chars.lastElement();
 						insertBefore = charNode == line.chars.lastElement() && line != _lines.lastElement();
 					} else {
 						charNode = getNearestCharInLine(line, point.x);
 					}
 				}
+				index++;
 				return charNode == undefined;
 			});
 		}
-		charBounds = charNode.getBBox();
-		dataChar = charNode.firstChild.getAttribute("data-char");
-		position = Number(dataChar) + (point.x > (charBounds.x + charBounds.width / 2)? 1 : 0);
+		dataChar = charNode.getAttribute("data-char");
+		position = Number(dataChar) + (point.x > (charNode.getPosition().x + _fontMeasures[charNode.textContent] / 2)? 1 : 0);
 		return {position:position, insertBefore:insertBefore};
+	}
+
+	self.getLineHeight = function() {
+		return _lineHeight;
+	}
+
+	self.render = function() {
+		draw(_container.offsetWidth, _container.offsetHeight);
+		var overFlowX = _data.length && _width > _container.offsetWidth;
+		var overFlowY = _data.length && _height > _container.offsetHeight;
+		_container.setAttribute("style", "width:" + $(_container.parentNode).innerWidth() + "px;height:" + $(_container.parentNode).innerHeight() + "px;overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y:" + (overFlowY? "scroll" : "hidden") + ";");
+		var width = overFlowX? _container.clientWidth : _width;
+		var height = overFlowY? _container.clientHeight : _height;
+		if(overFlowX || overFlowY) {
+			draw(width, height);
+		}
+		_dummy.setAttribute("style", "width:" + _width + "px;height:" + _height + "px;");
+		_wrapper.setAttribute("style", "width:" + _width + "px;height:" + _height + "px;");
+		_fakeScroll.setAttribute("style", "width:" + _container.clientWidth + "px;height:" + _container.clientHeight + "px;overflow:hidden;position:absolute;top:0px;left:0px");
+	}
+
+	function draw(width, height) {
+		clear();
+		var string = _data || NBSP;
+		var blocks = string.scan(/(\S+|\s+)/g);
+		var chars, dx, x, y, lineNode, blockNode, blockCharNodes, charNode;
+		var size = {width:0, height:0};
+		blocks.forEach(function(block) {
+			blockNode = _textFlow.appendChild(document.createElementNS(NS, "g"));
+			blockCharNodes = [];
+			block = block.replace(/ /g, NBSP);
+			chars = block.split("");
+			dx = 0;
+			chars.forEach(function(char) {
+				charNode = blockNode.appendChild(document.createElementNS(NS, "text"));
+				charNode.textContent = char;
+				charNode.move(dx, 0);
+				charNode.setAttributes({
+					class: CharClass,
+					"data-char":_chars.length,
+					"data-block":_blocks.length
+				});
+				blockCharNodes.push(charNode);
+				_chars.push(charNode);
+				_fontMeasures[char] = _fontMeasures[char] || charNode.getBBox().width;
+				dx += _fontMeasures[char];
+			});
+			_lineHeight = _lineHeight || charNode.getBBox().height;
+			var isTrailingSpace = block.match(NBSP);
+			if(lineNode == undefined || (x + dx > width - _margin * 2 && !isTrailingSpace)) {
+				x = _margin;
+				y = _lines.length? y + _lineHeight : _margin + _fontSize;
+				lineNode = _textFlow.appendChild(document.createElementNS(NS, "g"));
+				_lines.push({node:lineNode, blocks:[], chars:[]});
+			}
+			lineNode.appendChild(blockNode);
+			blockCharNodes.forEach(function(charNode) {
+				charNode.setAttributes({
+					"data-line":_lines.length - 1,
+				});
+				charNode.offset(x, y);
+			});
+			_blocks.push({node:blockNode, chars:blockCharNodes});
+			_lines.lastElement().chars = _lines.lastElement().chars.concat(blockCharNodes);
+			_lines.lastElement().blocks.push(blockNode);
+			x += dx;
+			if(!isTrailingSpace || !_data.length) size.width = Math.max(size.width, x);
+		});
+		size.width += _margin;
+		size.height = y + _margin;
+		_width = size.width;
+		_height = size.height;
 	}
 
 	function getNearestCharInLine(line, x) {
 		var charNode;
 		line.chars.every(function (char) {
-			var charBounds = char.getBBox();
-			if(x < charBounds.x || x < charBounds.x + charBounds.width || char == line.chars.lastElement()) {
+			var left = char.getPosition().x;
+			var right = left + _fontMeasures[char.textContent];
+			if(x < left || x < right || char == line.chars.lastElement()) {
 				charNode = char;
 			}
 			return charNode == undefined;
@@ -239,19 +237,22 @@ function TextDisplay() {
 		var from = Math.max(0,  Math.min(arguments[0], arguments[1]));
 		var to = Math.min(_chars.length - 1, Math.max(arguments[0], arguments[1]));
 		var end = arguments[0] == _chars.length || arguments[1] == _chars.length;
-		var fromBounds = _chars[from].getBBox();
-		var toBounds = _chars[to].getBBox();
-		var range = [Number(_chars[from].firstChild.getAttribute("data-line")), Number(_chars[to].firstChild.getAttribute("data-line"))];
+		var positionFrom = _chars[from].getPosition();
+		var positionTo = _chars[to].getPosition();
+		if(end) {
+			positionTo.x += _fontMeasures[_chars[to].textContent];
+		}
+		var range = [Number(_chars[from].getAttribute("data-line")), Number(_chars[to].getAttribute("data-line"))];
 		var path = ""; 
 		for (var index = range[0]; index <= range[1]; index++) {
 			var line = _lines[index].node;
-			var bounds = line.getBBox();
-			var rect = {left:bounds.x, top:bounds.y, right:bounds.x + bounds.width, bottom:bounds.y + bounds.height};
+			var last = line.lastChild.lastChild;
+			var rect = {left:_margin, top:_margin + index * _lineHeight, right:last.getPosition().x + _fontMeasures[last.textContent], bottom:_margin + (index + 1) * _lineHeight};
 			if(index == range[0]) {
-				rect.left = fromBounds.x;
+				rect.left = positionFrom.x;
 			}
 			if(index == range[1]) {
-				rect.right = toBounds.x + (end? toBounds.width : 0);
+				rect.right = positionTo.x;
 			}
 			rect.left = Math.round(rect.left);
 			rect.top = Math.round(rect.top);
@@ -266,70 +267,20 @@ function TextDisplay() {
 	}
 
 	function clear() {
-		while (_container.firstChild) {
-		    _container.removeChild(_container.firstChild);
+		while (_textFlow.firstChild) {
+		    _textFlow.removeChild(_textFlow.firstChild);
 		}
 		_lines = [];
-		_words = [];
+		_blocks = [];
 		_chars = [];
 	}
 
-	function update() {
-		clear();
-		var string = _data || NBSP;
-		var words = string.scan(/(\S+|\s+)/g);
-		var chars, dx, x, y, lineNode, wordNode, wordCharNodes, charNode, wrapper;
-		words.forEach(function(word) {
-			wordNode = _container.appendChild(document.createElementNS(NS, "g"));
-			wordCharNodes = [];
-			word = word.replace(/ /g, NBSP);
-			chars = word.split("");
-			dx = 0;
-			chars.forEach(function(char) {
-				wrapper = wordNode.appendChild(document.createElementNS(NS, "g"));
-				charNode = wrapper.appendChild(document.createElementNS(NS, "text"));
-				charNode.textContent = char;
-				charNode.setAttributes({
-					x: dx,
-					class: "char",
-					"font-size":_fontSize + "px",
-					"data-char":_chars.length,
-					"data-word":_words.length
-				});
-				wordCharNodes.push(wrapper);
-				_chars.push(wrapper);
-				_fontMeasures[char] = _fontMeasures[char] || wrapper.getBBox().width;
-				dx += _fontMeasures[char];
-			});
-			_wordMeasures[word] = _wordMeasures[word] || wordNode.getBBox();
-			var wordBounds = _wordMeasures[word];
-			if(lineNode == undefined || (x + wordBounds.width > _width - _margin * 2 && !word.match(NBSP))) {
-				x = _margin;
-				y = _lines.length? y + wordBounds.height : _margin + _fontSize;
-				lineNode = _container.appendChild(document.createElementNS(NS, "g"));
-				_lines.push({node:lineNode, words:[], chars:[]});
-			}
-			lineNode.appendChild(wordNode);
-			wordCharNodes.forEach(function(charNode) {
-				charNode.firstChild.setAttributes({
-					"data-line":_lines.length - 1,
-					x:x + Number(charNode.firstChild.getAttributes().x),
-					y:y
-				});
-			});
-			_words.push({node:wordNode, chars:wordCharNodes});
-			_lines.lastElement().chars = _lines.lastElement().chars.concat(wordCharNodes);
-			_lines.lastElement().words.push(wordNode);
-			x += wordBounds.width;
-		});
-		_background.setAttributes({width:_width, height:_height});
-	}
 
 	function toogleIBeam() {
 		if(_IBeam.parentNode) {
-			_container.removeChild(_IBeam);
+			_textFlow.removeChild(_IBeam);
 		} else {
-			_container.appendChild(_IBeam);
+			_textFlow.appendChild(_IBeam);
 		}
 	}
 
@@ -337,9 +288,9 @@ function TextDisplay() {
 		window.clearInterval(_IBeamInterval);
 		if(value && _focus) {
 			_IBeamInterval = window.setInterval(toogleIBeam, 500);
-			_container.appendChild(_IBeam);
+			_textFlow.appendChild(_IBeam);
 		} else if(_IBeam.parentNode) {
-			_container.removeChild(_IBeam);
+			_textFlow.removeChild(_IBeam);
 		}
 	}
 
@@ -354,23 +305,18 @@ function TextDisplay() {
 		} 
 		mouse.x -= _svg.offsetLeft;
 		mouse.y -= _svg.offsetTop;
+		mouse.x += _container.scrollLeft;
+		mouse.y += _container.scrollTop;
 		return mouse;
 	}
 
-
-	function garbageCollector() {
-		var persist = [];
-		_data.scan(/(\S+|\s+)/g).forEach(function (word) {
-			persist[word] = true;
-		});
-		for (var key in _wordMeasures) {
-			if(_wordMeasures.hasOwnProperty(key)) {
-				if(!persist[key]) {
-					delete _wordMeasures[key];
-				}
-			}
-		};
-		window.setTimeout(garbageCollector, 1000);
+	function getFontSize(TextClass) {
+		var text = document.body.appendChild(document.createElement("div"));
+		text.setAttribute("class", TextClass);
+		text.textContent = "X";
+		var fontSize = window.getComputedStyle(text, null).getPropertyValue("font-size");
+		document.body.removeChild(text);
+		return Number(fontSize.match(/[0-9]+/)[0]);
 	}
 
 	function mouseHandler(e) {
@@ -378,7 +324,6 @@ function TextDisplay() {
 			case "mousedown":
 				window.addEventListener("mousemove", mouseHandler);
 				window.addEventListener("mouseup", mouseHandler);
-				self.setSelection();
 				break;
 			case "mouseup":
 				window.removeEventListener("mousemove", mouseHandler);
@@ -390,14 +335,22 @@ function TextDisplay() {
 		var dataChar = e.target.getAttribute("data-char");
 		if(dataChar != undefined) {
 			charNode = _chars[dataChar];
-			charBounds = charNode.getBBox();
-			caretPosition = Number(dataChar) + (mouse.x > (charBounds.x + charBounds.width / 2)? 1 : 0);
+			caretPosition = Number(dataChar) + (mouse.x > (charNode.getPosition().x + _chars[charNode.textContent] / 2)? 1 : 0);
 		} else {
 			caret = self.getNearestCaretPosition(mouse, true);
 			caretPosition = caret.position - (caret.insertBefore? 1 : 0);
 		}
 		switch(e.type) {
 			case "mousedown":
+				if(e.shiftKey) {
+					if(_selection != undefined) {
+						self.setSelection(_selection[0], caretPosition);
+					} else {
+						self.setSelection(_caretPosition, caretPosition);
+					}
+				} else {
+					self.setSelection();
+				}
 				self.setCaret(caretPosition);
 				break;
 			case "mousemove":
@@ -412,8 +365,18 @@ function TextDisplay() {
 		
 	}
 
-	function mouseMoveHandler(e) {
-		self.setSelection(_caretPosition);
+	function doubleClickHandler(e) {
+		var index = e.target.getAttribute("data-block");
+		if(index != undefined) {
+			var block = _blocks[index];
+			self.setSelection(Number(block.chars.firstElement().getAttribute("data-char")), Number(block.chars.lastElement().getAttribute("data-char")) + 1);
+			self.dispatchEvent(new Event(Event.SELECTION, _selection));
+		}
+	}
+
+	function scrollHandler(e) {
+		_fakeScroll.scrollTop = e.target.scrollTop;
+		_fakeScroll.scrollLeft = e.target.scrollLeft;
 	}
 
 	init();
