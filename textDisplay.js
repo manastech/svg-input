@@ -32,9 +32,9 @@ function TextDisplay(container) {
 	var _fontMeasures = [];
 
 	//autoscroll left & top
+	//use insertBefore on key up/down
 	//space + wordboundary?
 	//one space per block
-	//use insertBefore on key up/down
 	
 	//cascade changes, self.render data -line -block -char
 	//appendCharAt
@@ -189,7 +189,9 @@ function TextDisplay(container) {
 				dx += _fontMeasures[char];
 			});
 			_lineHeight = _lineHeight || charNode.getBBox().height;
-			var isTrailingSpace = block.match(NBSP);
+			var isFirstBlock = _blocks.length == 0;
+			var isEmpty = _data.length == 0;
+			var isTrailingSpace = !isFirstBlock && block.match(NBSP);
 			if(lineNode == undefined || (x + dx > width - _margin * 2 && !isTrailingSpace)) {
 				x = _margin;
 				y = _lines.length? y + _lineHeight : _margin + _fontSize;
@@ -207,7 +209,7 @@ function TextDisplay(container) {
 			_lines.lastElement().chars = _lines.lastElement().chars.concat(blockCharNodes);
 			_lines.lastElement().blocks.push(blockNode);
 			x += dx;
-			if(!isTrailingSpace || !_data.length) size.width = Math.max(size.width, x);
+			if(!isTrailingSpace || isEmpty) size.width = Math.max(size.width, x);
 		});
 		size.width += _margin;
 		size.height = y + _margin;
