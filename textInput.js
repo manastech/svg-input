@@ -19,6 +19,7 @@ function TextInput(containerId) {
 		_textDisplay = new TextDisplay(_container);
 		_textDisplay.addEventListener(Event.CARET, caretHandler);
 		_textDisplay.addEventListener(Event.SELECTION, selectionHandler);
+		_textDisplay.addEventListener(Event.PILL, pillHandler);
 		self.invalidate();
 	}
 
@@ -76,7 +77,7 @@ function TextInput(containerId) {
 	function updatTextDisplay(value) {
 		switch(value) {
 			case ALL:
-				_textDisplay.setText(_string);
+				_textDisplay.setData(_string);
 			case CARET:
 				if(_selection != undefined) {
 					_selection[0] = bound(_selection[0]);
@@ -159,6 +160,7 @@ function TextInput(containerId) {
 				update = CARET;
 				break;
 			case 37://Arrow left
+				e.preventDefault();
 				if(e.ctrlKey || e.metaKey) {
 					var prevSpace = _string.substring(0, caret - 1).lastIndexOf(" ");
 					if(prevSpace != -1) {
@@ -189,6 +191,7 @@ function TextInput(containerId) {
 				update = CARET;
 				break;
 			case 39://Arrow right
+				e.preventDefault();
 				if(e.ctrlKey || e.metaKey) {
 					var nextSpace = _string.indexOf(" ", caret);
 					if(nextSpace != -1) {
@@ -210,7 +213,6 @@ function TextInput(containerId) {
 				e.preventDefault();
 				position = _textDisplay.getCaretPosition();
 				position.y += _textDisplay.getLineHeight();
-				console.log(position)
 				caret = _textDisplay.getNearestCaretPosition(position, false).position;
 				if(e.shiftKey) {
 					setSelection(_caret, caret);
@@ -248,6 +250,10 @@ function TextInput(containerId) {
 	function selectionHandler(e) {
 		setSelection.apply(null, e.info)
 		console.log(state());
+	}
+
+	function pillHandler(e) {
+		console.log("Create pill", e.info);
 	}
 
 	init(containerId);

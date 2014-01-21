@@ -16,7 +16,6 @@ function TextDisplay(container) {
 	var _fontSize = 14;
 	var _lineHeight;
 	var _container = container;
-	var _fakeScroll;
 	var _wrapper;
 	var _textFlow;
 	var _svg;
@@ -31,9 +30,7 @@ function TextDisplay(container) {
 	var _chars;
 	var _fontMeasures = [];
 
-	//autoscroll left & top
-	//use insertBefore on key up/down
-	//space + wordboundary?
+	//space + wordboundary (review select + trailing space)
 	//one space per block
 	
 	//cascade changes, self.render data -line -block -char
@@ -43,20 +40,23 @@ function TextDisplay(container) {
 	//firefox font size
 
 	function init() {
-		_container.addEventListener("mousedown", mouseHandler);
-		_container.addEventListener("dblclick", doubleClickHandler);
 		_wrapper = _container.appendChild(document.createElement("div"));
+		_wrapper.addEventListener("mousedown", mouseHandler);
+		_wrapper.addEventListener("dblclick", doubleClickHandler);
 		_wrapper.setAttribute("id","wrapper");
 		_svg = _wrapper.appendChild(document.createElementNS(NS,"svg"));
 		_selectionArea = _svg.appendChild(document.createElementNS(NS,"g"));
 		_textFlow = _svg.appendChild(document.createElementNS(NS,"g"));
+		_fontSize = getFontSize(CharClass);
 		_IBeam = document.createElementNS(NS,"rect");
 		_IBeam.setAttributes({width:1, style:"fill:#000000", "pointer-events":"none"});
-		_fontSize = getFontSize(CharClass);
+		_pillButton = document.createElement("div");
+		_pillButton.setAttribute("class", "pill");
+		_pillButton.addEventListener("click", pillClickHandler);
 		self.setFocus(false);
 	}
 
-	self.setText = function(value) {
+	self.setData = function(value) {
 		_data = value;
 		self.render();
 	}
@@ -64,13 +64,63 @@ function TextDisplay(container) {
 	self.setCaret = function (value) {
 		_caretPosition = value;
 		var charNode = _chars[Math.max(0, Math.min(_chars.length - 1, value))];
-		var position = charNode.getPosition();
-		_IBeam.setAttributes({x:position.x + (value == _chars.length? _fontMeasures[charNode.textContent] : 0), y:position.y - _fontSize, height:_lineHeight});
+		var charNodePosition = charNode.getPosition();
+		var caretPosition = {};
+		caretPosition.x = charNodePosition.x + (value == _chars.length? _fontMeasures[charNode.textContent] : 0);
+		caretPosition.y = charNodePosition.y - _fontSize;
+		_IBeam.setAttributes({x:caretPosition.x, y:caretPosition.y, height:_lineHeight});
+		var left = caretPosition.x - _margin;
+		var right = caretPosition.x + _margin - _container.clientWidth;
+		var top = caretPosition.y - _margin;
+		var bottom = caretPosition.y + _lineHeight + _margin - _container.clientHeight;
+		if(_container.scrollLeft > left) {
+			_container.scrollLeft = left;
+		} else if(_container.scrollLeft < right) {
+			_container.scrollLeft = right;
+		}
+		if(_container.scrollTop > top) {
+			_container.scrollTop = top;
+		} else if(_container.scrollTop < bottom) {
+			_container.scrollTop = bottom;
+		}
 		setIBeam(true);
 	}
 
 	self.getCaretPosition = function() {
 		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + _lineHeight / 2};
+	}
+
+	self.getNearestCaretPosition = function(point, contour) {
+		if(!_data.length) return {position:0, insertBefore:false};
+		var position, charNode, dataChar, index;
+		var insertBefore = false;
+		var before = point.y <= _margin;
+		var after = point.y > _chars.lastElement().getPosition().y;
+		if(before) {
+			charNode = getNearestCharInLine(_lines.firstElement(), point.x);
+		} else if (after) {
+			charNode = getNearestCharInLine(_lines.lastElement(), point.x);
+		} else {
+			index = 0;
+			_lines.every(function (line) {
+				var top = index * _lineHeight + _margin;
+				var bottom = top + _lineHeight;
+				var match = point.y > top && point.y <= bottom ;
+				if (match) {
+					if(contour) {
+						charNode = point.x < _margin? line.chars.firstElement() : line.chars.lastElement();
+					} else {
+						charNode = getNearestCharInLine(line, point.x);
+					}
+					insertBefore = charNode == line.chars.lastElement() && line != _lines.lastElement();
+				}
+				index++;
+				return charNode == undefined;
+			});
+		}
+		dataChar = charNode.getAttribute("data-char");
+		position = Number(dataChar) + (point.x > (charNode.getPosition().x + _fontMeasures[charNode.textContent] / 2)? 1 : 0);
+		return {position:position, insertBefore:insertBefore};
 	}
 
 	self.setSelection = function() {
@@ -80,10 +130,17 @@ function TextDisplay(container) {
 		_chars.forEach(function (char) {
 			char.setAttributes({style:"fill:#000000"});
 		});
+		if(_pillButton.parentNode) {
+			_pillButton.parentNode.removeChild(_pillButton);
+		}
 		var empty = !arguments.length || arguments[0] == arguments[1];
 		_selection = empty? undefined : arguments;
-		_IBeam.setAttributes({opacity:empty? 1 : 0})
+		_IBeam.setAttributes({opacity:empty? 1 : 0});
 		if(empty) return;
+		var endChar = _chars[arguments[1]];
+		var endPosition = endChar.getPosition();
+		_container.appendChild(_pillButton);
+		_pillButton.setAttribute("style", "top:" + endPosition.y + "px;left:" + (endPosition.x - _fontMeasures[endChar.textContent] / 2) + "px;");
 		var from = Math.min(arguments[0], arguments[1]);
 		var to = Math.max(arguments[0], arguments[1]);
 		var path = _selectionArea.appendChild(document.createElementNS(NS, "path"));
@@ -110,39 +167,6 @@ function TextDisplay(container) {
 		}
 	}
 
-	self.getNearestCaretPosition = function(point, contour) {
-		if(!_data.length) return {position:0, insertBefore:false};
-		var position, charNode, dataChar, index;
-		var insertBefore = false;
-		var before = point.y <= _margin;
-		var after = point.y > _chars.lastElement().getPosition().y;
-		if(before) {
-			charNode = getNearestCharInLine(_lines.firstElement(), point.x);
-		} else if (after) {
-			charNode = getNearestCharInLine(_lines.lastElement(), point.x);
-		} else {
-			index = 0;
-			_lines.every(function (line) {
-				var top = index * _lineHeight + _margin;
-				var bottom = top + _lineHeight;
-				var match = point.y > top && point.y <= bottom ;
-				if (match) {
-					if(contour) {
-						charNode = point.x < _margin? line.chars.firstElement() : line.chars.lastElement();
-						insertBefore = charNode == line.chars.lastElement() && line != _lines.lastElement();
-					} else {
-						charNode = getNearestCharInLine(line, point.x);
-					}
-				}
-				index++;
-				return charNode == undefined;
-			});
-		}
-		dataChar = charNode.getAttribute("data-char");
-		position = Number(dataChar) + (point.x > (charNode.getPosition().x + _fontMeasures[charNode.textContent] / 2)? 1 : 0);
-		return {position:position, insertBefore:insertBefore};
-	}
-
 	self.getLineHeight = function() {
 		return _lineHeight;
 	}
@@ -159,7 +183,7 @@ function TextDisplay(container) {
 		}
 		if(!overFlowX) _container.scrollLeft = 0;
 		if(!overFlowY) _container.scrollTop = 0;
-		_wrapper.setAttribute("style", "width:" + _width + "px;height:" + _height + "px;");
+		_wrapper.setAttribute("style", "width:" + Math.max(_container.clientWidth, _width) + "px;height:" + Math.max( _container.clientHeight, _height) + "px;");
 	}
 
 	function draw(width, height) {
@@ -300,8 +324,8 @@ function TextDisplay(container) {
 		  mouse.x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
 		  mouse.y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
 		} 
-		mouse.x -= _svg.offsetLeft;
-		mouse.y -= _svg.offsetTop;
+		mouse.x -= _container.offsetLeft;
+		mouse.y -= _container.offsetTop;
 		mouse.x += _container.scrollLeft;
 		mouse.y += _container.scrollTop;
 		return mouse;
@@ -366,9 +390,26 @@ function TextDisplay(container) {
 		var index = e.target.getAttribute("data-block");
 		if(index != undefined) {
 			var block = _blocks[index];
-			self.setSelection(Number(block.chars.firstElement().getAttribute("data-char")), Number(block.chars.lastElement().getAttribute("data-char")) + 1);
+			var from = Number(block.chars.firstElement().getAttribute("data-char"));
+			var to = Number(block.chars.lastElement().getAttribute("data-char")) + 1;
+			if(block.chars.firstElement().textContent.match(NBSP)) {
+				if(block.chars.firstElement().parentNode.previousSibling) {
+					from = Number(block.chars.firstElement().parentNode.previousSibling.firstChild.getAttribute("data-char"));
+				}
+			} else {
+				if(block.chars.firstElement().parentNode.nextSibling) {
+					to = Number(block.chars.firstElement().parentNode.nextSibling.lastChild.getAttribute("data-char")) + 1;
+				}
+			}
+			self.setSelection(from, to);
 			self.dispatchEvent(new Event(Event.SELECTION, _selection));
 		}
+	}
+
+	function pillClickHandler(e) {
+		var from = Math.min(_selection[0], _selection[1]);
+		var to = Math.max(_selection[0], _selection[1]);
+		self.dispatchEvent(new Event(Event.PILL, [from, to + 1]));
 	}
 
 	init();

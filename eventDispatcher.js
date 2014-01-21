@@ -61,3 +61,4 @@ function Event(type, info) {
 
 Event.CARET = "caret";
 Event.SELECTION = "selection";
+Event.PILL = "pill";
