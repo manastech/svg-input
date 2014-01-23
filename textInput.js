@@ -3,257 +3,279 @@ function TextInput(containerId) {
 	EventDispatcher.call(this);
 	InvalidateElement.call(this);
 
-	var ALL = "all";
-	var CARET = "caret";
-	var NONE = "none";
 	var self = this;
-	var _caret = 0;
-	var _selection;
-	var _string = "";
 	var _container;
-	var _textDisplay;
-	
+	var _display;
+	var _selection;
+	var _keyTracker;
+	var _caret = 0;
+	var _elements = [];
+	var _focus;
+
 	function init(containerId) {
+		_selection = new Selection();
+		_selection.addEventListener(Event.SELECT, selectHandler);
+		_keyTracker = new KeyTracker(self, _selection);
+		_display = new TextDisplay();
 		_container = document.getElementById(containerId);
+		_container.addEventListener("mousedown", mouseHandler);
+		_container.addEventListener("dblclick", doubleClickHandler);
 		_container.addEventListener("click", clickHandler);
-		_textDisplay = new TextDisplay(_container);
-		_textDisplay.addEventListener(Event.CARET, caretHandler);
-		_textDisplay.addEventListener(Event.SELECTION, selectionHandler);
-		_textDisplay.addEventListener(Event.PILL, pillHandler);
+		_container.appendChild(_display.source());
 		self.invalidate();
 	}
 
-	self.render = function() {
-		_textDisplay.render();
-	}
-
-	self.setFocus = function(value) {
-		if(value) {
-			_textDisplay.setFocus(true);
-			document.addEventListener("keypress", keyPressHandler);
-			document.addEventListener("keydown", keyDownHandler);
-			document.addEventListener("click", clickOutsideHandler);
-			$(_container).addClass("focus");
+	self.focus = function(value) {
+		if(!arguments.length) {
+			return _focus;
 		} else {
-			_textDisplay.setFocus(false);
-			document.removeEventListener("keypress", keyPressHandler);
-			document.removeEventListener("keydown", keyDownHandler);
-			document.removeEventListener("click", clickOutsideHandler);
-			$(_container).removeClass("focus");
-		}
-	}
-
-	function state() {
-		var state;
-		if(_selection != undefined) {
-			var start = Math.min(_selection[0], _selection[1]);
-			var end = Math.max(_selection[0], _selection[1]);
-			if(start != end) {
-				state = _string.splice(end, 0, "]").splice(start, 0, "[");
+			_focus = value;
+			if(_focus) {
+				document.addEventListener("click", clickOutsideHandler);
+				_container.setAttribute("class", "svgInput-focus");
+				_display.focus(true);
+				_keyTracker.activate();
+			} else {
+				document.removeEventListener("click", clickOutsideHandler);
+				_container.setAttribute("class", "svgInput");
+				_display.focus(false);
+				_keyTracker.deactivate();
 			}
 		}
-		if(state == undefined) {
-			state = _string.splice(_caret, 0, "|");
-		}
-		return state;
 	}
 
-	function bound(value) {
-		return Math.max(0, Math.min(_string.length, value));
-	}
-
-	function setSelection(last, current) {
-		if(arguments[0] == undefined) {
-			_selection = undefined;
-			return;
-		}
-		if(_selection == undefined) {
-			_selection = [last, bound(current)];
-		} else {
-			_selection[1] = bound(current);
-		}
-	}
-
-	function updatTextDisplay(value) {
-		switch(value) {
-			case ALL:
-				_textDisplay.setData(_string);
-			case CARET:
-				if(_selection != undefined) {
-					_selection[0] = bound(_selection[0]);
-					_selection[1] = bound(_selection[1]);
-					_textDisplay.setSelection(_selection[0], _selection[1]);
-				} else {
-					_textDisplay.setSelection();
+	self.data = function(value) {
+		if(!arguments.length) {
+			var data = [];
+			_elements.forEach(function(element) {
+				switch(element.type()) {
+					case "character":
+						if(typeof data.lastElement() != "string") {
+							data.push("");
+						}
+						data.lastElement() = data.lastElement() + element.text();
+						break;
+					case "pill":
+						data.push({id:element.id(), text:element.text()});
+						break;
 				}
-				_textDisplay.setCaret(_caret);
+			});
+			return data;
+		} else {
+			_elements = [];
+			value.forEach(function(entry) {
+				switch(typeof entry) {
+					case "string":
+						var chars = entry.split("");
+						chars.forEach(function(char) {
+							_elements.push(new Character(char));
+						});
+						break;
+					case "object":
+						_elements.push(new Pill(entry.id, entry.text));
+						break;
+				}
+			});
+			_selection.limit(_elements.length);
+			self.invalidate();
+		}
+	}
+
+	self.appendChar = function(char, start, remove) {
+		if(char != undefined) {
+			var character = new Character(char);
+			_elements.splice(start, remove, character);
+		} else {
+			_elements.splice(start, remove);
+		}
+		_selection.limit(_elements.length);
+		self.invalidate();
+	}
+
+	self.caret = function(value) {
+		if(!arguments.length) {
+			return _caret;
+		} else {
+			_caret = Math.max(0, Math.min(_elements.length, value));
+			_display.moveCaret(_caret);
+			var position = _display.caretPosition();
+			var margin = _display.margin();
+			if(_container.scrollLeft + margin > position.x) {
+				_container.scrollLeft = position.x - margin;
+			} else if(_container.scrollLeft + _container.clientWidth - margin < position.x) {
+				_container.scrollLeft = position.x + margin - _container.clientWidth;
+			}
+			if(_container.scrollTop + margin > position.y) {
+				_container.scrollTop = position.y - margin;
+			} else if(_container.scrollTop + _container.clientHeight - margin < position.y) {
+				_container.scrollTop = position.y + margin - _container.clientHeight;
+			}
+			console.log(self.toString());
+		}
+	}
+
+	self.jump = function(value) {
+		var point = _display.carePosition();
+		point.y += value * _display.lineHeight();
+		self.caret(_display.getNearestPosition(point, false));
+	}
+
+	self.prevBoundary = function(value) {
+		return Number(_elements[value].source().parentNode.firstChild.getAttribute("data-index"));
+	}
+
+	self.nextBoundary = function(value) {
+		return Number(_elements[value].source().parentNode.lastChild.getAttribute("data-index"));
+	}
+
+	self.render = function() {
+		var style = window.getComputedStyle(_container);
+		var innerWidth = Number(style.getPropertyValue("width").match(/\d+/));
+		var innerHeight = Number(style.getPropertyValue("height").match(/\d+/));
+		_display.render(_elements, innerWidth, innerHeight);
+		var overFlowX = _elements.length && _display.width() > innerWidth;
+		var overFlowY = _elements.length && _display.height() > innerHeight;
+		var width = overFlowX? _container.clientWidth : innerWidth;
+		var height = overFlowY? _container.clientHeight : innerHeight;
+		if(overFlowX || overFlowY) {
+			_display.render(_elements, width, height);
+		}
+		self.caret(_caret);
+		if(_selection.length()) {
+			_display.drawSelection(_selection.start(), _selection.end());
+		} else {
+			_display.clearSelection();
+		}
+		if(!overFlowX) _container.scrollLeft = 0;
+		if(!overFlowY) _container.scrollTop = 0;
+		_container.setAttribute("style", "overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y" + (overFlowY? "scroll" : "hidden"));
+	}
+
+	self.toString = function() {
+		var string = "";
+		var caret = _caret;
+		var start = _selection.start();
+		var end = _selection.end();
+		var index = 0;
+		_elements.forEach(function(element) {
+			switch(element.type()) {
+				case "character":
+					string += element.toString();
+					break;
+				case "pill":
+					string += element.toString();
+					var offset = element.toString().length - 1;
+					caret += caret > index? offset : 0;
+					start += start > index? offset : 0;
+					end += end > index? offset : 0;
+					break;
+			}
+			index++;
+		});
+		if(_selection.length()) {
+			string = string.splice(end, 0, "]").splice(start, 0, "[");
+		} else {
+			string = string.splice(caret, 0, "|");
+		}
+		return string;
+	}
+
+	function mousePosition(e) {
+		var mouse = {};
+		if (e.pageX || e.pageY) { 
+		  mouse.x = e.pageX;
+		  mouse.y = e.pageY;
+		} else { 
+		  mouse.x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
+		  mouse.y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
+		} 
+		mouse.x -= _container.offsetLeft;
+		mouse.y -= _container.offsetTop;
+		mouse.x += _container.scrollLeft;
+		mouse.y += _container.scrollTop;
+		return mouse;
+	}
+
+	function mouseHandler(e) {
+		switch(e.type) {
+			case "mousedown":
+				window.addEventListener("mousemove", mouseHandler);
+				window.addEventListener("mouseup", mouseHandler);
+				break;
+			case "mouseup":
+				window.removeEventListener("mousemove", mouseHandler);
+				window.removeEventListener("mouseup", mouseHandler);
 				break;
 		}
-		if(value != NONE) console.log(state());
+		var caret;
+		var insertBefore = false;
+		var mouse = mousePosition(e);
+		var index = e.target.getAttribute("data-index");
+		if(index) {
+			var element = _elements[index];
+			caret = Number(index) + (mouse.x > (element.x() + element.source().getBBox().width / 2)? 1 : 0);
+			insertBefore = element.source().parentNode.nextSibling == undefined;
+		} else {
+			var nearestPosition = _display.getNearestPosition(mouse, true);
+			caret = nearestPosition.position;
+			insertBefore = nearestPosition.insertBefore;
+		}
+		switch(e.type) {
+			case "mousedown":
+				if(e.shiftKey) {
+					if(_selection.length()) {
+						_selection.set(_selection.from(), caret);
+					} else {
+						_selection.set(_caret, caret);
+					}
+				} else {
+					_selection.clear();
+				}
+				self.caret(caret);
+				break;
+			case "mousemove":
+				_selection.set(_caret, caret);
+				break;
+			case "mouseup":
+				self.caret(caret);
+				break;
+		}
 	}
 
 	function clickHandler(e) {
 		e.stopPropagation();
-		self.setFocus(true);
+		self.focus(true);
 	}
 
-	function keyPressHandler(e) {
-		if(e.charCode) {
-			e.preventDefault();
-			var char = String.fromCharCode(e.charCode);
-			var start = _selection != undefined? Math.min(_selection[0], _selection[1]) : _caret;
-			var length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 0;
-			_string = _string.splice(start, length, char);
-			setSelection();
-			_caret = start + 1;
-			updatTextDisplay(ALL);
+	function doubleClickHandler(e) {
+		if(e.target.getAttribute("data-index")) {
+			var block = _blocks[index];
+			var firstNode = e.target.parentNode.firstChild;
+			var lastNode = e.target.parentNode.lastChild;
+			if(firstNode.textContent.match(NBSP)) {
+				if(firstNode.parentNode.previousSibling) {
+					firstNode = firstNode.parentNode.previousSibling.firstChild;
+				}
+			} else {
+				if(lastNode.parentNode.nextSibling) {
+					lastNode = lastNode.parentNode.nextSibling.lastChild;
+				}
+			}
+			_selection.set(Number(firstNode.getAttribute("data-index")), Number(lastNode.getAttribute("data-index")) + 1);
 		}
-	}
-
-	function keyDownHandler(e) {
-		var start, length, position;
-		var caret = _caret;
-		var update = ALL;
-		switch(e.keyCode) {
-			case 13://Enter
-			case 16://Shift
-			case 17://Control
-			case 18://Alt
-			case 33://Page up
-			case 34://Page down
-				return;
-			case 8://Backspace
-				e.preventDefault();
-				if(caret || (_selection != undefined && _selection.length)) {
-					start = _selection != undefined? Math.min(_selection[0], _selection[1]) : caret - 1;
-					length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 1;
-					_string = _string.splice(start, length, "");
-					if(_selection == undefined) {
-						caret--;
-					} else {
-						caret = Math.min(_selection[0], _selection[1]);
-					}
-				}
-				setSelection();
-				break;
-			case 9://Tab
-			case 27://Escape
-				self.setFocus(false);
-				update = NONE;
-				break;
-			case 35://End
-				caret = Number.MAX_VALUE;
-				if(e.shiftKey) {
-					setSelection(_caret, caret);
-				} else {
-					setSelection();
-				}
-				update = CARET;
-				break;
-			case 36://Home
-				caret = 0;
-				if(e.shiftKey) {
-					setSelection(_caret, caret);
-				} else {
-					setSelection();
-				}
-				update = CARET;
-				break;
-			case 37://Arrow left
-				e.preventDefault();
-				if(e.ctrlKey || e.metaKey) {
-					var prevSpace = _string.substring(0, caret - 1).lastIndexOf(" ");
-					if(prevSpace != -1) {
-						caret = prevSpace + 1;
-					} else {
-						caret = 0;
-					}
-				} else {
-					caret--;
-				}
-				if(e.shiftKey) {
-					setSelection(_caret, caret);
-				} else {
-					setSelection();
-				}
-				update = CARET;
-				break;
-			case 38://Arrow up
-				e.preventDefault();
-				position = _textDisplay.getCaretPosition();
-				position.y -= _textDisplay.getLineHeight();
-				caret = _textDisplay.getNearestCaretPosition(position, false).position;
-				if(e.shiftKey) {
-					setSelection(_caret, caret);
-				} else {
-					setSelection();
-				}
-				update = CARET;
-				break;
-			case 39://Arrow right
-				e.preventDefault();
-				if(e.ctrlKey || e.metaKey) {
-					var nextSpace = _string.indexOf(" ", caret);
-					if(nextSpace != -1) {
-						caret = nextSpace + 1;
-					} else {
-						caret = Number.MAX_VALUE;
-					}
-				} else {
-					caret++;
-				}
-				if(e.shiftKey) {
-					setSelection(_caret, caret);
-				} else {
-					setSelection();
-				}
-				update = CARET;
-				break;
-			case 40://Arrow down
-				e.preventDefault();
-				position = _textDisplay.getCaretPosition();
-				position.y += _textDisplay.getLineHeight();
-				caret = _textDisplay.getNearestCaretPosition(position, false).position;
-				if(e.shiftKey) {
-					setSelection(_caret, caret);
-				} else {
-					setSelection();
-				}
-				update = CARET;
-				break;
-			case 46://Delete
-				start = _selection != undefined? Math.min(_selection[0], _selection[1]) : caret;
-				length = _selection != undefined? Math.max(_selection[0], _selection[1]) - start : 1;
-				if(length > 1 || caret < _string.length) {
-					_string = _string.splice(start, length, "");
-				}
-				setSelection();
-				break;
-			default:
-				update = NONE;
-				break;
-		}
-		_caret = bound(caret);
-		updatTextDisplay(update);
 	}
 
 	function clickOutsideHandler(e) {
 		e.stopPropagation();
-		self.setFocus(false);
+		self.focus(false);
 	}
 
-	function caretHandler(e) {
-		_caret = e.info;
-		console.log(state());
-	}
-	
-	function selectionHandler(e) {
-		setSelection.apply(null, e.info)
-		console.log(state());
-	}
-
-	function pillHandler(e) {
-		console.log("Create pill", e.info);
+	function selectHandler(e) {
+		if(e.info.length) {
+			_display.drawSelection(e.info.start, e.info.end);
+		} else {
+			_display.clearSelection();
+		}
 	}
 
 	init(containerId);

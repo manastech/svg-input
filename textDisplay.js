@@ -1,5 +1,5 @@
 
-function TextDisplay(container) {
+function TextDisplay() {
 
 	EventDispatcher.call(this);
 
@@ -8,94 +8,102 @@ function TextDisplay(container) {
 	var ZWSP = "\u200B";
 	var BLOCK = "\u2588";
 	var self = this;
-	var CharClass = "char";
-	var _data = "";
-	var _width = 100;
-	var _height = 0;
-	var _margin = 5;
-	var _fontSize = 14;
+	var _width;
+	var _height;
+	var _margin;
+	var _fontSize;
 	var _lineHeight;
-	var _container = container;
 	var _wrapper;
-	var _textFlow;
 	var _svg;
-	var _caretPosition;
-	var _selection;
+	var _textFlow;
 	var _selectionArea;
 	var _IBeam;
 	var _IBeamInterval;
 	var _focus;
 	var _lines;
 	var _blocks;
-	var _chars;
-	var _fontMeasures = [];
+	var _elements = [];
+	var _elementsWidth = [];
 
+	//display draw/drawfrom (add width & height to div)
+	//display.moveCaret
+
+	//Pill hover active focus children pointer-events:none
+	//create pill
+	//drag pill
 	//space + wordboundary (review select + trailing space)
 	//one space per block
 	
 	//cascade changes, self.render data -line -block -char
-	//appendCharAt
-	//removeCharAt
 	//autoexpand
 	//firefox font size
+	//remove pill (use button display none, display block)
 
 	function init() {
-		_wrapper = _container.appendChild(document.createElement("div"));
-		_wrapper.addEventListener("mousedown", mouseHandler);
-		_wrapper.addEventListener("dblclick", doubleClickHandler);
+		_fontSize = getFontSize("char");
+		_lineHeight = _fontSize * 1.2;
+		_wrapper = document.createElement("div");
 		_wrapper.setAttribute("id","wrapper");
 		_svg = _wrapper.appendChild(document.createElementNS(NS,"svg"));
 		_selectionArea = _svg.appendChild(document.createElementNS(NS,"g"));
 		_textFlow = _svg.appendChild(document.createElementNS(NS,"g"));
-		_fontSize = getFontSize(CharClass);
 		_IBeam = document.createElementNS(NS,"rect");
-		_IBeam.setAttributes({width:1, style:"fill:#000000", "pointer-events":"none"});
-		_pillButton = document.createElement("div");
-		_pillButton.setAttribute("class", "pill");
-		_pillButton.addEventListener("click", pillClickHandler);
-		self.setFocus(false);
+		_IBeam.setAttribute("width", "1");
+		_IBeam.setAttribute("style", "fill:#000000;");
+		_IBeam.setAttribute("pointer-events", "none");
+		self.margin(5);
+		self.focus(false);
 	}
 
-	self.setData = function(value) {
-		_data = value;
-		self.render();
+	self.width = function() {
+		return _width;
 	}
 
-	self.setCaret = function (value) {
-		_caretPosition = value;
-		var charNode = _chars[Math.max(0, Math.min(_chars.length - 1, value))];
-		var charNodePosition = charNode.getPosition();
-		var caretPosition = {};
-		caretPosition.x = charNodePosition.x + (value == _chars.length? _fontMeasures[charNode.textContent] : 0);
-		caretPosition.y = charNodePosition.y - _fontSize;
-		_IBeam.setAttributes({x:caretPosition.x, y:caretPosition.y, height:_lineHeight});
-		var left = caretPosition.x - _margin;
-		var right = caretPosition.x + _margin - _container.clientWidth;
-		var top = caretPosition.y - _margin;
-		var bottom = caretPosition.y + _lineHeight + _margin - _container.clientHeight;
-		if(_container.scrollLeft > left) {
-			_container.scrollLeft = left;
-		} else if(_container.scrollLeft < right) {
-			_container.scrollLeft = right;
+	self.height = function() {
+		return _height;
+	}
+
+	self.source = function() {
+		return _wrapper;
+	}
+
+	self.drawSelection = function(start, end) {
+		self.clearSelection();
+		_IBeam.setAttribute("opacity", "0");
+		var path = _selectionArea.appendChild(document.createElementNS(NS, "path"));
+		path.setAttribute({d:getPath(start, end), fill:"#0066ff"});
+		for (var index = from; index < to && index < _elements.length; index++) {
+			_elements[index].focus(true);
 		}
-		if(_container.scrollTop > top) {
-			_container.scrollTop = top;
-		} else if(_container.scrollTop < bottom) {
-			_container.scrollTop = bottom;
+	}
+
+	self.clearSelection = function() {
+		while(_selectionArea.firstChild) {
+			_selectionArea.removeChild(_selectionArea.firstChild);
 		}
+		_elements.forEach(function(char) {
+			char.focus(false);
+		});
+		_IBeam.setAttribute("opacity", "1");
+	}
+
+	self.moveCaret = function (value) {
+		var char = _elements[Math.max(0, Math.min(_elements.lastIndex(), value))];
+		console.log(char, _elements.length)
+		var x = char.x() + (value == _elements.length? _elementsWidth[char.text()] : 0);
+		var y = char.y() - _fontSize;
+		_IBeam.setAttribute("x", x);
+		_IBeam.setAttribute("y", y);
+		_IBeam.setAttribute("height", _lineHeight);
 		setIBeam(true);
 	}
-
-	self.getCaretPosition = function() {
-		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + _lineHeight / 2};
-	}
-
-	self.getNearestCaretPosition = function(point, contour) {
-		if(!_data.length) return {position:0, insertBefore:false};
+	
+	self.getNearestPosition = function(point, contour) {
+		/*if(!_data.length) return {position:0, insertBefore:false};
 		var position, charNode, dataChar, index;
 		var insertBefore = false;
 		var before = point.y <= _margin;
-		var after = point.y > _chars.lastElement().getPosition().y;
+		var after = point.y > _elements.lastElement().getPosition().y;
 		if(before) {
 			charNode = getNearestCharInLine(_lines.firstElement(), point.x);
 		} else if (after) {
@@ -119,43 +127,34 @@ function TextDisplay(container) {
 			});
 		}
 		dataChar = charNode.getAttribute("data-char");
-		position = Number(dataChar) + (point.x > (charNode.getPosition().x + _fontMeasures[charNode.textContent] / 2)? 1 : 0);
-		return {position:position, insertBefore:insertBefore};
-	}
+		position = Number(dataChar) + (point.x > (charNode.getPosition().x + _elementsWidth[charNode.textContent] / 2)? 1 : 0);
+		return {position:position, insertBefore:insertBefore};*/
 
-	self.setSelection = function() {
-		while(_selectionArea.firstChild) {
-			_selectionArea.removeChild(_selectionArea.firstChild);
-		}
-		_chars.forEach(function (char) {
-			char.setAttributes({style:"fill:#000000"});
+	/*	function getNearestCharInLine(line, x) {
+		var charNode;
+		line.chars.every(function (char) {
+			var left = char.getPosition().x;
+			var right = left + _elementsWidth[char.textContent];
+			if(x < left || x < right || char == line.chars.lastElement()) {
+				charNode = char;
+			}
+			return charNode == undefined;
 		});
-		if(_pillButton.parentNode) {
-			_pillButton.parentNode.removeChild(_pillButton);
-		}
-		var empty = !arguments.length || arguments[0] == arguments[1];
-		_selection = empty? undefined : arguments;
-		_IBeam.setAttributes({opacity:empty? 1 : 0});
-		if(empty) return;
-		var endChar = _chars[arguments[1]];
-		var endPosition = endChar.getPosition();
-		_container.appendChild(_pillButton);
-		_pillButton.setAttribute("style", "top:" + endPosition.y + "px;left:" + (endPosition.x - _fontMeasures[endChar.textContent] / 2) + "px;");
-		var from = Math.min(arguments[0], arguments[1]);
-		var to = Math.max(arguments[0], arguments[1]);
-		var path = _selectionArea.appendChild(document.createElementNS(NS, "path"));
-		path.setAttributes({d:getPath(from, to), fill:"#0066ff"});
-		for (var index = from; index < to && index < _chars.length; index++) {
-			_chars[index].setAttributes({style:"fill:#ffffff"});
-		}
+		return charNode;
+	}*/
 	}
 
-	self.setMargin = function(value) {
+	self.caretPosition = function() {
+		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + _lineHeight / 2};
+	}
+
+	self.margin = function(value) {
 		_margin = value;
 		self.render();
 	}
 
-	self.setFocus = function(value) {
+	self.focus = function(value) {
+		return
 		_focus = value;
 		setIBeam(_focus);
 		if(_focus) {
@@ -170,24 +169,24 @@ function TextDisplay(container) {
 	self.getLineHeight = function() {
 		return _lineHeight;
 	}
+	
 
-	self.render = function() {
-		draw(_container.offsetWidth, _container.offsetHeight);
-		var overFlowX = _data.length && _width > $(_container).innerWidth();
-		var overFlowY = _data.length && _height > $(_container).innerHeight();
-		_container.setAttribute("style", "overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y:" + (overFlowY? "scroll" : "hidden") + ";");
-		var width = overFlowX? _container.clientWidth : _width;
-		var height = overFlowY? _container.clientHeight : _height;
-		if(overFlowX || overFlowY) {
-			draw(width, height);
+	self.render = function(elements, width, height) {
+		if(!arguments.length) {
+			elements = _elements;
+			width = _width;
+			height = _height;
 		}
-		if(!overFlowX) _container.scrollLeft = 0;
-		if(!overFlowY) _container.scrollTop = 0;
-		_wrapper.setAttribute("style", "width:" + Math.max(_container.clientWidth, _width) + "px;height:" + Math.max( _container.clientHeight, _height) + "px;");
-	}
+		_elements = elements || [];
+		console.log(">>>", _elements.length)
 
-	function draw(width, height) {
-		clear();
+		/*if(!arguments.length) //use current values?
+		while (_textFlow.firstChild) {
+		    _textFlow.removeChild(_textFlow.firstChild);
+		}
+		_lines = [];
+		_blocks = [];
+		_elements = [];
 		var string = _data || NBSP;
 		var blocks = string.scan(/(\S+|\s+)/g);
 		var chars, dx, x, y, lineNode, blockNode, blockCharNodes, charNode;
@@ -204,13 +203,13 @@ function TextDisplay(container) {
 				charNode.move(dx, 0);
 				charNode.setAttributes({
 					class: CharClass,
-					"data-char":_chars.length,
+					"data-char":_elements.length,
 					"data-block":_blocks.length
 				});
 				blockCharNodes.push(charNode);
-				_chars.push(charNode);
-				_fontMeasures[char] = _fontMeasures[char] || charNode.getBBox().width;
-				dx += _fontMeasures[char];
+				_elements.push(charNode);
+				_elementsWidth[char] = _elementsWidth[char] || charNode.getBBox().width;
+				dx += _elementsWidth[char];
 			});
 			_lineHeight = _lineHeight || charNode.getBBox().height;
 			var isFirstBlock = _blocks.length == 0;
@@ -225,7 +224,7 @@ function TextDisplay(container) {
 			lineNode.appendChild(blockNode);
 			blockCharNodes.forEach(function(charNode) {
 				charNode.setAttributes({
-					"data-line":_lines.length - 1,
+					"data-line":_lines.lastIndex(),
 				});
 				charNode.offset(x, y);
 			});
@@ -239,36 +238,21 @@ function TextDisplay(container) {
 		size.height = y + _margin;
 		_width = size.width;
 		_height = size.height;
+		_wrapper.setAttribute("style", "width:" + Math.max(_container.clientWidth, _width) + "px;height:" + Math.max( _container.clientHeight, _height) + "px;");*/
 	}
 
-	function getNearestCharInLine(line, x) {
-		var charNode;
-		line.chars.every(function (char) {
-			var left = char.getPosition().x;
-			var right = left + _fontMeasures[char.textContent];
-			if(x < left || x < right || char == line.chars.lastElement()) {
-				charNode = char;
-			}
-			return charNode == undefined;
-		});
-		return charNode;
-	}
-
-	function getPath() {
-		var from = Math.max(0,  Math.min(arguments[0], arguments[1]));
-		var to = Math.min(_chars.length - 1, Math.max(arguments[0], arguments[1]));
-		var end = arguments[0] == _chars.length || arguments[1] == _chars.length;
-		var positionFrom = _chars[from].getPosition();
-		var positionTo = _chars[to].getPosition();
-		if(end) {
-			positionTo.x += _fontMeasures[_chars[to].textContent];
+	function getPath(start, end) {
+		var positionFrom = _elements[start].getPosition();
+		var positionTo = _elements[end].getPosition();
+		if(end == _elements.length) {
+			positionTo.x += _elementsWidth[_elements[to].textContent];
 		}
-		var range = [Number(_chars[from].getAttribute("data-line")), Number(_chars[to].getAttribute("data-line"))];
+		var range = [Number(_elements[from].getAttribute("data-line")), Number(_elements[to].getAttribute("data-line"))];
 		var path = ""; 
 		for (var index = range[0]; index <= range[1]; index++) {
 			var line = _lines[index].node;
 			var last = line.lastChild.lastChild;
-			var rect = {left:_margin, top:_margin + index * _lineHeight, right:last.getPosition().x + _fontMeasures[last.textContent], bottom:_margin + (index + 1) * _lineHeight};
+			var rect = {left:_margin, top:_margin + index * _lineHeight, right:last.getPosition().x + _elementsWidth[last.textContent], bottom:_margin + (index + 1) * _lineHeight};
 			if(index == range[0]) {
 				rect.left = positionFrom.x;
 			}
@@ -286,16 +270,6 @@ function TextDisplay(container) {
 		}
 		return path;
 	}
-
-	function clear() {
-		while (_textFlow.firstChild) {
-		    _textFlow.removeChild(_textFlow.firstChild);
-		}
-		_lines = [];
-		_blocks = [];
-		_chars = [];
-	}
-
 
 	function toogleIBeam() {
 		if(_IBeam.parentNode) {
@@ -315,101 +289,13 @@ function TextDisplay(container) {
 		}
 	}
 
-	function getMouseCoordinates(e) {
-		var mouse = {};
-		if (e.pageX || e.pageY) { 
-		  mouse.x = e.pageX;
-		  mouse.y = e.pageY;
-		} else { 
-		  mouse.x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
-		  mouse.y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
-		} 
-		mouse.x -= _container.offsetLeft;
-		mouse.y -= _container.offsetTop;
-		mouse.x += _container.scrollLeft;
-		mouse.y += _container.scrollTop;
-		return mouse;
-	}
-
 	function getFontSize(TextClass) {
 		var text = document.body.appendChild(document.createElement("div"));
 		text.setAttribute("class", TextClass);
 		text.textContent = "X";
-		var fontSize = window.getComputedStyle(text, null).getPropertyValue("font-size");
+		var fontSize = window.getComputedStyle(text).getPropertyValue("font-size");
 		document.body.removeChild(text);
-		return Number(fontSize.match(/[0-9]+/)[0]);
-	}
-
-	function mouseHandler(e) {
-		switch(e.type) {
-			case "mousedown":
-				window.addEventListener("mousemove", mouseHandler);
-				window.addEventListener("mouseup", mouseHandler);
-				break;
-			case "mouseup":
-				window.removeEventListener("mousemove", mouseHandler);
-				window.removeEventListener("mouseup", mouseHandler);
-				break;
-		}
-		var caret, caretPosition;
-		var mouse = getMouseCoordinates(e);
-		var dataChar = e.target.getAttribute("data-char");
-		if(dataChar != undefined) {
-			charNode = _chars[dataChar];
-			caretPosition = Number(dataChar) + (mouse.x > (charNode.getPosition().x + _chars[charNode.textContent] / 2)? 1 : 0);
-		} else {
-			caret = self.getNearestCaretPosition(mouse, true);
-			caretPosition = caret.position - (caret.insertBefore? 1 : 0);
-		}
-		switch(e.type) {
-			case "mousedown":
-				if(e.shiftKey) {
-					if(_selection != undefined) {
-						self.setSelection(_selection[0], caretPosition);
-					} else {
-						self.setSelection(_caretPosition, caretPosition);
-					}
-				} else {
-					self.setSelection();
-				}
-				self.setCaret(caretPosition);
-				break;
-			case "mousemove":
-				self.setSelection(_caretPosition, caretPosition);
-				break;
-			case "mouseup":
-				self.setCaret(caretPosition);
-				self.dispatchEvent(new Event(Event.CARET, _caretPosition));
-				self.dispatchEvent(new Event(Event.SELECTION, _selection));
-				break;
-		}
-		
-	}
-
-	function doubleClickHandler(e) {
-		var index = e.target.getAttribute("data-block");
-		if(index != undefined) {
-			var block = _blocks[index];
-			var from = Number(block.chars.firstElement().getAttribute("data-char"));
-			var to = Number(block.chars.lastElement().getAttribute("data-char")) + 1;
-			if(block.chars.firstElement().textContent.match(NBSP)) {
-				if(block.chars.firstElement().parentNode.previousSibling) {
-					from = Number(block.chars.firstElement().parentNode.previousSibling.firstChild.getAttribute("data-char"));
-				}
-			} else {
-				if(block.chars.firstElement().parentNode.nextSibling) {
-					to = Number(block.chars.firstElement().parentNode.nextSibling.lastChild.getAttribute("data-char")) + 1;
-				}
-			}
-			self.setSelection(from, to);
-			self.dispatchEvent(new Event(Event.SELECTION, _selection));
-		}
-	}
-
-	function pillClickHandler(e) {
-		var from = Math.min(_selection[0], _selection[1]);
-		var to = Math.max(_selection[0], _selection[1]);
-		self.dispatchEvent(new Event(Event.PILL, [from, to + 1]));
+		return Number(fontSize.match(/\d+/));
 	}
 
 	init();

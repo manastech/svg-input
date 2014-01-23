@@ -59,6 +59,4 @@ function Event(type, info) {
 	this.info = info;
 };
 
-Event.CARET = "caret";
-Event.SELECTION = "selection";
-Event.PILL = "pill";
+Event.SELECT = "select";

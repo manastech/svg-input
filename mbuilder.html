@@ -4,14 +4,19 @@
       <title>mBuilder</title>
       <link rel="stylesheet" type="text/css" href="style.css">
       <script type="text/javascript" src="prototypes.js"></script>
-      <script type="text/javascript" src="InvalidateElement.js"></script>
-      <script type="text/javascript" src="EventDispatcher.js"></script>
-      <script type="text/javascript" src="textDisplay.js"></script>
+      <script type="text/javascript" src="invalidateElement.js"></script>
+      <script type="text/javascript" src="eventDispatcher.js"></script>
+      <script type="text/javascript" src="keyTracker.js"></script>
+      <script type="text/javascript" src="selection.js"></script>
       <script type="text/javascript" src="textInput.js"></script>
-      <script type="text/javascript" src="jquery-1.10.2.min.js"></script>
+      <script type="text/javascript" src="character.js"></script>
+      <script type="text/javascript" src="pill.js"></script>
+      
+      <script type="text/javascript" src="textDisplay.js"></script>
   		<script>
 	    	window.onload = function() {
 		    	var input = new TextInput("input");
+          input.data(["Hola mundo ", {id:1, text:"pill"},"!"]);
 		    }
 	    </script>
     </head>
