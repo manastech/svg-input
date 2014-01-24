@@ -21,7 +21,6 @@ function TextDisplay() {
 	var _IBeamInterval;
 	var _focus;
 	var _lines;
-	var _blocks;
 	var _elements = [];
 	var _elementsWidth = [];
 
@@ -177,44 +176,48 @@ function TextDisplay() {
 			width = _width;
 			height = _height;
 		}
-		_elements = elements || [];
-		console.log(">>>", _elements.length)
-
-		/*if(!arguments.length) //use current values?
 		while (_textFlow.firstChild) {
 		    _textFlow.removeChild(_textFlow.firstChild);
 		}
+		var block, blockElements, x, y;
+		var index = 0;
 		_lines = [];
-		_blocks = [];
-		_elements = [];
-		var string = _data || NBSP;
+		_elements = elements || [new Character(NBSP)];
+		_elements.forEach(function (element) {
+			var isFirstBlock = block == undefined
+			var isEmpty = elements.length == 0;
+			var isSpace = block.match(NBSP);
+			var isBoundary = element.text().match(/\b/);
+			var isPill = element.type() == "pill";
+			if(isFirstBlock || isPill || isBoundary) {
+				block = _textFlow.appendChild(document.createElementNS(NS, "g"));
+				blockElements = [];
+			}
+			block.appendChild(element.source())
+			blockElements.push(element);
+			if(_elementsWidth[element.text()] == undefined) {
+				var boundingBox = element.source().getBBox();
+				_elementsWidth[element.text()] = boundingBox.width;
+				_lineHeight = _lineHeight || boundingBox.height;
+			}
+			element.move(x, y);
+			element.index(index);
+			x += _elementsWidth[element.text()];
+			index++;
+		});
+		/*
 		var blocks = string.scan(/(\S+|\s+)/g);
-		var chars, dx, x, y, lineNode, blockNode, blockCharNodes, charNode;
+		var chars, dx, x, y, lineNode;
 		var size = {width:0, height:0};
 		blocks.forEach(function(block) {
-			blockNode = _textFlow.appendChild(document.createElementNS(NS, "g"));
-			blockCharNodes = [];
 			block = block.replace(/ /g, NBSP);
-			chars = block.split("");
 			dx = 0;
 			chars.forEach(function(char) {
-				charNode = blockNode.appendChild(document.createElementNS(NS, "text"));
-				charNode.textContent = char;
 				charNode.move(dx, 0);
-				charNode.setAttributes({
-					class: CharClass,
 					"data-char":_elements.length,
 					"data-block":_blocks.length
-				});
-				blockCharNodes.push(charNode);
-				_elements.push(charNode);
-				_elementsWidth[char] = _elementsWidth[char] || charNode.getBBox().width;
 				dx += _elementsWidth[char];
 			});
-			_lineHeight = _lineHeight || charNode.getBBox().height;
-			var isFirstBlock = _blocks.length == 0;
-			var isEmpty = _data.length == 0;
-			var isTrailingSpace = !isFirstBlock && block.match(NBSP);
 			if(lineNode == undefined || (x + dx > width - _margin * 2 && !isTrailingSpace)) {
 				x = _margin;
 				y = _lines.length? y + _lineHeight : _margin + _fontSize;
