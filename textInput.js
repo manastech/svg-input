@@ -5,12 +5,20 @@ function TextInput(containerId) {
 
 	var self = this;
 	var _container;
+	var _wrapper;
 	var _display;
 	var _selection;
 	var _keyTracker;
 	var _caret = 0;
 	var _elements = [];
 	var _focus;
+	var _margin;
+	var _button;
+	var _autoExpand;
+	var _minHeight;
+	var _scrollHeight;
+	var _dragTarget;
+	var _debug;
 
 	function init(containerId) {
 		_selection = new Selection();
@@ -20,9 +28,15 @@ function TextInput(containerId) {
 		_container = document.getElementById(containerId);
 		_container.addEventListener("mousedown", mouseHandler);
 		_container.addEventListener("dblclick", doubleClickHandler);
-		_container.addEventListener("click", clickHandler);
-		_container.appendChild(_display.source());
+		_wrapper = _container.appendChild(document.createElement("div"));
+		_wrapper.setAttribute("id","wrapper");
+		_wrapper.appendChild(_display.source());
+		_button = _container.parentNode.insertBefore(document.createElement("button"), _container.nextSibling);
+		_button.textContent = "Create pill";
+		_button.addEventListener("click", buttonClickHandler);
+		_button.style.display = "none";
 		self.invalidate();
+		self.margin(5)
 	}
 
 	self.focus = function(value) {
@@ -32,7 +46,7 @@ function TextInput(containerId) {
 			_focus = value;
 			if(_focus) {
 				document.addEventListener("click", clickOutsideHandler);
-				_container.setAttribute("class", "svgInput-focus");
+				_container.setAttribute("class", "svgInput svgInput-focus");
 				_display.focus(true);
 				_keyTracker.activate();
 			} else {
@@ -41,6 +55,24 @@ function TextInput(containerId) {
 				_display.focus(false);
 				_keyTracker.deactivate();
 			}
+		}
+	}
+
+	self.margin = function(value) {
+		if(!arguments.length) {
+			return _margin;
+		} else {
+			_margin = value;
+			self.invalidate();
+		}
+	}
+
+	self.autoExpand = function(value) {
+		if(!arguments.length) {
+			return _autoExpand;
+		} else {
+			_autoExpand = value;
+			self.invalidate();
 		}
 	}
 
@@ -66,16 +98,17 @@ function TextInput(containerId) {
 			value.forEach(function(entry) {
 				switch(typeof entry) {
 					case "string":
-						var chars = entry.split("");
+						var chars = entry.replace(/\s/g, "\u00A0").split("");
 						chars.forEach(function(char) {
 							_elements.push(new Character(char));
 						});
 						break;
 					case "object":
-						_elements.push(new Pill(entry.id, entry.text));
+						_elements.push(new Pill(entry.id, entry.text.replace(/\s/g, "\u00A0")));
 						break;
 				}
 			});
+			self.caret(_elements.length);
 			_selection.limit(_elements.length);
 			self.invalidate();
 		}
@@ -83,13 +116,13 @@ function TextInput(containerId) {
 
 	self.appendChar = function(char, start, remove) {
 		if(char != undefined) {
-			var character = new Character(char);
+			var character = new Character(char.replace(/\s/g, "\u00A0"));
 			_elements.splice(start, remove, character);
 		} else {
 			_elements.splice(start, remove);
 		}
 		_selection.limit(_elements.length);
-		self.invalidate();
+		self.render();
 	}
 
 	self.caret = function(value) {
@@ -99,48 +132,73 @@ function TextInput(containerId) {
 			_caret = Math.max(0, Math.min(_elements.length, value));
 			_display.moveCaret(_caret);
 			var position = _display.caretPosition();
-			var margin = _display.margin();
-			if(_container.scrollLeft + margin > position.x) {
-				_container.scrollLeft = position.x - margin;
-			} else if(_container.scrollLeft + _container.clientWidth - margin < position.x) {
-				_container.scrollLeft = position.x + margin - _container.clientWidth;
+			if(_container.scrollLeft + _margin > position.x) {
+				_container.scrollLeft = position.x - _margin;
+			} else if(_container.scrollLeft + _container.clientWidth - _margin * 2 < position.x) {
+				_container.scrollLeft = position.x + _margin * 2 - _container.clientWidth;
 			}
-			if(_container.scrollTop + margin > position.y) {
-				_container.scrollTop = position.y - margin;
-			} else if(_container.scrollTop + _container.clientHeight - margin < position.y) {
-				_container.scrollTop = position.y + margin - _container.clientHeight;
+			if(_container.scrollTop + _margin > position.y) {
+				_container.scrollTop = position.y - _margin;
+			} else if(_container.scrollTop + _container.clientHeight - _margin * 2 < position.y) {
+				_container.scrollTop = position.y + _margin * 2 - _container.clientHeight;
 			}
-			console.log(self.toString());
+			if(self.debug()) console.log(self.toString());
 		}
 	}
 
 	self.jump = function(value) {
-		var point = _display.carePosition();
+		var point = _display.caretPosition();
 		point.y += value * _display.lineHeight();
-		self.caret(_display.getNearestPosition(point, false));
+		self.caret(_display.nearestPosition(point, false).index);
 	}
 
 	self.prevBoundary = function(value) {
-		return Number(_elements[value].source().parentNode.firstChild.getAttribute("data-index"));
+		value = Math.max(0, Math.min(_elements.length - 1, value));
+		var boundary = value;
+		if(_elements[value].text().match(/\s/)) {
+			while (_elements[boundary].text().match(/\s/) && boundary > 0) {
+				boundary--;
+			}
+		}
+		while (boundary > 0 && _elements[boundary - 1].text().match(/\S/)) {
+			boundary--;
+		}
+		return boundary;
 	}
 
 	self.nextBoundary = function(value) {
-		return Number(_elements[value].source().parentNode.lastChild.getAttribute("data-index"));
+		value = Math.max(0, Math.min(_elements.length - 1, value));
+		var boundary = value;
+		if(_elements[value].text().match(/\s/)) {
+			while (boundary < _elements.length && _elements[boundary].text().match(/\s/)) {
+				boundary++;
+			}
+		}
+		while (boundary < _elements.length && _elements[boundary].text().match(/\S/)) {
+			boundary++;
+		}
+		return boundary;
 	}
 
 	self.render = function() {
+		if(_autoExpand) {
+			_container.style.height = _minHeight;
+		}
 		var style = window.getComputedStyle(_container);
 		var innerWidth = Number(style.getPropertyValue("width").match(/\d+/));
 		var innerHeight = Number(style.getPropertyValue("height").match(/\d+/));
-		_display.render(_elements, innerWidth, innerHeight);
+		_minHeight = _minHeight || innerHeight;
+		innerWidth -= _margin * 2;
+		innerHeight -= _margin * 2;
+		_display.render(_elements, innerWidth, _autoExpand? _minHeight : innerHeight);
 		var overFlowX = _elements.length && _display.width() > innerWidth;
-		var overFlowY = _elements.length && _display.height() > innerHeight;
-		var width = overFlowX? _container.clientWidth : innerWidth;
-		var height = overFlowY? _container.clientHeight : innerHeight;
+		var overFlowY = _elements.length && _display.height() > innerHeight && !_autoExpand;
+		_scrollHeight = 15//_scrollHeight || Number(style.getPropertyValue("height").match(/\d+/)) - _container.clientHeight;
+		var width = overFlowX? _container.clientWidth - _margin * 2 : innerWidth;
+		var height = overFlowY? _container.clientHeight - _margin * 2 : innerHeight;
 		if(overFlowX || overFlowY) {
 			_display.render(_elements, width, height);
 		}
-		self.caret(_caret);
 		if(_selection.length()) {
 			_display.drawSelection(_selection.start(), _selection.end());
 		} else {
@@ -148,7 +206,18 @@ function TextInput(containerId) {
 		}
 		if(!overFlowX) _container.scrollLeft = 0;
 		if(!overFlowY) _container.scrollTop = 0;
-		_container.setAttribute("style", "overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y" + (overFlowY? "scroll" : "hidden"));
+		_wrapper.setAttribute("style", "padding:" + _margin + "px;width:" +  _display.width() + "px;height:" + _display.height() + "px;");
+		_container.setAttribute("style", "overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y:" + (overFlowY && !_autoExpand? "scroll" : "hidden"));
+		if(_autoExpand) {
+			var contentHeight = _display.height() + _margin * 2;
+			if(_display.height() - _display.computedHeight() == 0 && overFlowX) {
+				contentHeight += _scrollHeight;
+				console.log("scroll", _scrollHeight)
+			}
+			console.log(contentHeight)
+			_container.style.height = Math.max(_minHeight, contentHeight) + "px";
+			_container.scrollTop = 0;
+		}
 	}
 
 	self.toString = function() {
@@ -180,6 +249,15 @@ function TextInput(containerId) {
 		return string;
 	}
 
+	self.debug = function(value) {
+		if (!arguments.length) {
+			return _debug;
+		} else {
+			_debug = value;
+			console.log(self.toString());
+		}
+	}
+
 	function mousePosition(e) {
 		var mouse = {};
 		if (e.pageX || e.pageY) { 
@@ -197,8 +275,15 @@ function TextInput(containerId) {
 	}
 
 	function mouseHandler(e) {
+		if(_container.contains(e.target)) {
+			self.focus(true);
+		}
+		if(e.target == _container) return;
 		switch(e.type) {
 			case "mousedown":
+				if(e.target.parentNode.getAttribute("type")) {
+					_dragTarget = e.target.parentNode;
+				}
 				window.addEventListener("mousemove", mouseHandler);
 				window.addEventListener("mouseup", mouseHandler);
 				break;
@@ -216,8 +301,8 @@ function TextInput(containerId) {
 			caret = Number(index) + (mouse.x > (element.x() + element.source().getBBox().width / 2)? 1 : 0);
 			insertBefore = element.source().parentNode.nextSibling == undefined;
 		} else {
-			var nearestPosition = _display.getNearestPosition(mouse, true);
-			caret = nearestPosition.position;
+			var nearestPosition = _display.nearestPosition(mouse, true);
+			caret = nearestPosition.index;
 			insertBefore = nearestPosition.insertBefore;
 		}
 		switch(e.type) {
@@ -234,25 +319,34 @@ function TextInput(containerId) {
 				self.caret(caret);
 				break;
 			case "mousemove":
-				_selection.set(_caret, caret);
+				if(_dragTarget == undefined) {
+					_selection.set(_caret, caret);
+				} else {
+					self.caret(caret);
+				}
 				break;
 			case "mouseup":
 				self.caret(caret);
+				if(_dragTarget != undefined) {
+					var index = Number(_dragTarget.getAttribute("data-index"));
+					var element = _elements[index];
+					_elements.splice(index, 1);
+					if(_caret > index) {
+						self.caret(_caret - 1);
+					}
+					_elements.splice(_caret, 0, element);
+					self.invalidate();
+				}
+				_dragTarget = undefined;
 				break;
 		}
 	}
 
-	function clickHandler(e) {
-		e.stopPropagation();
-		self.focus(true);
-	}
-
 	function doubleClickHandler(e) {
 		if(e.target.getAttribute("data-index")) {
-			var block = _blocks[index];
 			var firstNode = e.target.parentNode.firstChild;
 			var lastNode = e.target.parentNode.lastChild;
-			if(firstNode.textContent.match(NBSP)) {
+			if(firstNode.textContent.match("\u00A0")) {
 				if(firstNode.parentNode.previousSibling) {
 					firstNode = firstNode.parentNode.previousSibling.firstChild;
 				}
@@ -266,8 +360,10 @@ function TextInput(containerId) {
 	}
 
 	function clickOutsideHandler(e) {
-		e.stopPropagation();
-		self.focus(false);
+		if(!_container.contains(e.target)) {
+			e.stopPropagation();
+			self.focus(false);
+		}
 	}
 
 	function selectHandler(e) {
@@ -276,6 +372,17 @@ function TextInput(containerId) {
 		} else {
 			_display.clearSelection();
 		}
+		_button.style.display = _selection.length()? "block" : "none";
+	}
+
+	function buttonClickHandler(e) {
+		var label = "";
+		for (var index = _selection.start(); index < _selection.end(); index++) {
+			label += _elements[index].text();
+		}
+		_elements.splice(_selection.start(), _selection.length(), new Pill(undefined, label));
+		_selection.clear();
+		self.invalidate();
 	}
 
 	init(containerId);

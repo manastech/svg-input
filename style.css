@@ -1,6 +1,5 @@
 .svgInput {
-	margin-top:50px;
-	margin-left:50px;
+	cursor:text;
 	width:100px;
 	height:100px;
 	background: #ffffff;
@@ -13,7 +12,7 @@
 }
 
 .svgInput-focus {
-	border: 1px #999999 solid;	
+	border: 1px #999999 solid;
 }
 
 .char {
@@ -41,13 +40,13 @@
 	font-size:14px;
 	font-family: "Arial";
 	charNode-rendering: "geometricPrecision";
-	fill:#ff6600;
+	fill:#cccccc;
 }
 
 .pill-focus {
-	fill:#0066ff;
+	fill:#ff6600;
 }
 
 #wrapper {
-	cursor:text;
+	padding:5px;
 }

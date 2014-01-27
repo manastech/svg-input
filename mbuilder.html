@@ -16,11 +16,16 @@
   		<script>
 	    	window.onload = function() {
 		    	var input = new TextInput("input");
-          input.data(["Hola mundo ", {id:1, text:"pill"},"!"]);
+          input.data(["Hola mundo ", {id:1, text:"this is a pill far too wide"},"! new line"]);
+          input.autoExpand(true);
+          //input.data(["lorem ipsum dolor sit amet"]);
+          //input.debug(true);
 		    }
 	    </script>
     </head>
     <body>
-	    <div id="input" class="svgInput"></div>
+      <div style="margin-top:50px;margin-left:50px;">
+	     <div id="input" class="svgInput"></div>
+      </div>
    	</body>
 </html>

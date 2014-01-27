@@ -85,12 +85,7 @@ function KeyTracker(input, selection) {
 				break;
 			case 37://Arrow left
 				if(e.ctrlKey || e.metaKey) {
-					var prevBoundary = _input.prevBoundary(caret - 1);
-					if(prevBoundary != -1) {
-						caret = prevBoundary + 1;
-					} else {
-						caret = 0;
-					}
+					caret = _input.prevBoundary(caret - 1);
 				} else {
 					caret--;
 				}
@@ -103,7 +98,7 @@ function KeyTracker(input, selection) {
 				break;
 			case 39://Arrow right
 				if(e.ctrlKey || e.metaKey) {
-					var nextBoundary = _input.nextBoundary(caret - 1);
+					var nextBoundary = _input.nextBoundary(caret);
 					if(nextBoundary != -1) {
 						caret = nextBoundary + 1;
 					} else {
@@ -116,7 +111,7 @@ function KeyTracker(input, selection) {
 				_input.caret(caret);
 				break;
 			case 40://Arrow down
-				caret = _input.jump(1);
+				_input.jump(1);
 				select(e.shiftKey, caret, _input.caret());
 				break;
 			case 46://Delete

@@ -7,24 +7,25 @@ function Pill(id, text) {
 	var _text = "";
 	var _source;
 	var _text;
+	var _label;
 	var _background;
 	var _index;
-	var _block;
-	var _line;
 	var _focus;
+	var _boundingBox;
 
 	function init(id, text) {
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "g");
+		_source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "pill"));
+		_source.setAttribute("type", "pill");
 		_background = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "rect"));
-		_background.setAttribute("rx", 5);
-		_background.setAttribute("ry", 5);
-		_text = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "text"));
+		_background.setAttribute("rx", 3);
+		_background.setAttribute("ry", 3);
+		_label = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "text"));
+		_label.setAttribute("cursor", "move");
 		self.focus(false);
 		self.text(text);
 		self.move(0, 0);
 		self.index(0);
-		self.block(0);
-		self.line(0);
 	}
 
 	self.focus = function(value) {
@@ -32,8 +33,8 @@ function Pill(id, text) {
 			return _focus;
 		} else {
 			_focus = value;
-			_source.setAttribute("class", "pill" + (_focus? "-focus" : ""));
-			_background.setAttribute("style", "fill:red;stroke:black;stroke-width:5;");
+			_label.setAttribute("class", "char" + (_focus? " char-focus" : ""));
+			_background.setAttribute("class", "pill" + (_focus? " pill-focus" : ""));
 		}
 	}
 
@@ -43,24 +44,6 @@ function Pill(id, text) {
 		} else {
 			_index = value;
 			_source.setAttribute("data-index", _index);
-		}
-	}
-
-	self.block = function(value) {
-		if(!arguments.length) {
-			return _block;
-		} else {
-			_block = value;
-			_source.setAttribute("data-block", _block);
-		}
-	}
-
-	self.line = function(value) {
-		if(!arguments.length) {
-			return _line;
-		} else {
-			_line = value;
-			_source.setAttribute("data-line", _line);
 		}
 	}
 
@@ -78,10 +61,7 @@ function Pill(id, text) {
 			return _text;
 		} else {
 			_text = value;
-			_source.textContent = _text;
-			var boundingBox = _source.getBBox();
-			_background.setAttribute("width", boundingBox.width);
-			_background.setAttribute("height", boundingBox.height);
+			_label.textContent = _text;
 		}
 	}
 
@@ -90,7 +70,8 @@ function Pill(id, text) {
 			return _x;
 		} else {
 			_x = value;
-			_source.setAttribute("x", _x);
+			_label.setAttribute("x", _x);
+			_background.setAttribute("x", _x);
 		}
 	}
 
@@ -99,8 +80,23 @@ function Pill(id, text) {
 			return _y;
 		} else {
 			_y = value;
-			_source.setAttribute("y", _y);
+			_label.setAttribute("y", _y);
+			_background.setAttribute("y", _y);
 		}
+	}
+
+	self.draw = function() {
+		if(_boundingBox == undefined) {
+			var padding = 2;
+			_boundingBox = _label.getBBox();
+			_label.setAttribute("transform", "translate(" + padding + ",0)");
+			_label.setAttribute("width", _boundingBox.width);
+			_boundingBox.width = _boundingBox.width + padding * 2;
+			_background.setAttribute("width", _boundingBox.width);
+			_background.setAttribute("height", _boundingBox.height);
+			_background.setAttribute("transform", "translate(0," + _boundingBox.y + ")");
+		}
+		return _boundingBox;
 	}
 
 	self.move = function(x, y) {

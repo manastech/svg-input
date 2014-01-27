@@ -3,17 +3,13 @@ function TextDisplay() {
 
 	EventDispatcher.call(this);
 
-	var NS = "http://www.w3.org/2000/svg";
-	var NBSP = "\u00A0";
-	var ZWSP = "\u200B";
-	var BLOCK = "\u2588";
 	var self = this;
 	var _width;
 	var _height;
-	var _margin;
+	var _computedWidth;
+	var _computedHeight;
 	var _fontSize;
 	var _lineHeight;
-	var _wrapper;
 	var _svg;
 	var _textFlow;
 	var _selectionArea;
@@ -24,33 +20,29 @@ function TextDisplay() {
 	var _elements = [];
 	var _elementsWidth = [];
 
-	//display draw/drawfrom (add width & height to div)
-	//display.moveCaret
-
-	//Pill hover active focus children pointer-events:none
+	//autoexpand
+	//texinput autoscroll top
+	//cant drag selection from first char
+	//wrap spaces
+	//click pills select
+	//jump move caret with insertBefore?
+	//Pill hover active focus style
 	//create pill
 	//drag pill
-	//space + wordboundary (review select + trailing space)
-	//one space per block
-	
-	//cascade changes, self.render data -line -block -char
-	//autoexpand
 	//firefox font size
-	//remove pill (use button display none, display block)
+	//cascade changes
 
 	function init() {
-		_fontSize = getFontSize("char");
+		_fontSize = fontSize("char");
 		_lineHeight = _fontSize * 1.2;
-		_wrapper = document.createElement("div");
-		_wrapper.setAttribute("id","wrapper");
-		_svg = _wrapper.appendChild(document.createElementNS(NS,"svg"));
-		_selectionArea = _svg.appendChild(document.createElementNS(NS,"g"));
-		_textFlow = _svg.appendChild(document.createElementNS(NS,"g"));
-		_IBeam = document.createElementNS(NS,"rect");
+		_svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+		_selectionArea = _svg.appendChild(document.createElementNS("http://www.w3.org/2000/svg","g"));
+		_selectionArea.setAttribute("fill", "#0066ff");
+		_textFlow = _svg.appendChild(document.createElementNS("http://www.w3.org/2000/svg","g"));
+		_IBeam = document.createElementNS("http://www.w3.org/2000/svg","rect");
 		_IBeam.setAttribute("width", "1");
 		_IBeam.setAttribute("style", "fill:#000000;");
 		_IBeam.setAttribute("pointer-events", "none");
-		self.margin(5);
 		self.focus(false);
 	}
 
@@ -62,16 +54,24 @@ function TextDisplay() {
 		return _height;
 	}
 
+	self.computedWidth = function() {
+		return _computedWidth;
+	}
+
+	self.computedHeight = function() {
+		return _computedHeight;
+	}
+
 	self.source = function() {
-		return _wrapper;
+		return _svg;
 	}
 
 	self.drawSelection = function(start, end) {
 		self.clearSelection();
 		_IBeam.setAttribute("opacity", "0");
-		var path = _selectionArea.appendChild(document.createElementNS(NS, "path"));
-		path.setAttribute({d:getPath(start, end), fill:"#0066ff"});
-		for (var index = from; index < to && index < _elements.length; index++) {
+		var path = _selectionArea.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "path"));
+		path.setAttribute("d", selectionPath(start, end));
+		for (var index = start; index < end && index < _elements.length; index++) {
 			_elements[index].focus(true);
 		}
 	}
@@ -80,95 +80,89 @@ function TextDisplay() {
 		while(_selectionArea.firstChild) {
 			_selectionArea.removeChild(_selectionArea.firstChild);
 		}
-		_elements.forEach(function(char) {
-			char.focus(false);
+		_elements.forEach(function(element) {
+			element.focus(false);
 		});
 		_IBeam.setAttribute("opacity", "1");
 	}
 
 	self.moveCaret = function (value) {
-		var char = _elements[Math.max(0, Math.min(_elements.lastIndex(), value))];
-		console.log(char, _elements.length)
-		var x = char.x() + (value == _elements.length? _elementsWidth[char.text()] : 0);
-		var y = char.y() - _fontSize;
-		_IBeam.setAttribute("x", x);
-		_IBeam.setAttribute("y", y);
+		var x = 0;
+		var y = 0;
+		if(_elements.length) {
+			var element = _elements[Math.max(0, Math.min(_elements.lastIndex(), value))];
+			x = element.x() + (value == _elements.length? _elementsWidth[element.text()] : 0);
+			y = element.y() - _fontSize;
+		}
+		_IBeam.setAttribute("x", x || 0);
+		_IBeam.setAttribute("y", y || 0);
 		_IBeam.setAttribute("height", _lineHeight);
 		setIBeam(true);
 	}
-	
-	self.getNearestPosition = function(point, contour) {
-		/*if(!_data.length) return {position:0, insertBefore:false};
-		var position, charNode, dataChar, index;
-		var insertBefore = false;
-		var before = point.y <= _margin;
-		var after = point.y > _elements.lastElement().getPosition().y;
+
+	self.nearestPosition = function(point, contour) {
+		var nearestPosition = {index:0, insertBefore:false};
+		if(!_elements.length) return nearestPosition;
+		function elementByLine(line, x) {
+			for (var blockIndex = line.childElementCount - 1; blockIndex >= 0; blockIndex--) {
+				block = line.childNodes[blockIndex];
+				for (var elementIndex = block.childElementCount - 1; elementIndex >= 0; elementIndex--) {
+					var element = block.childNodes[elementIndex];
+					var index = Number(element.getAttribute("data-index"));
+					var left = _elements[index].x();
+					var right = left + _elementsWidth[_elements[index].text()];
+					if(x > right || x > left || element == line.firstChild.firstChild) {
+						return _elements[index];
+					}
+				}
+			}
+		}
+		var before = point.y <= 0;
+		var after = point.y > _elements.lastElement().y();
 		if(before) {
-			charNode = getNearestCharInLine(_lines.firstElement(), point.x);
+			element = elementByLine(_textFlow.firstChild, point.x);
 		} else if (after) {
-			charNode = getNearestCharInLine(_lines.lastElement(), point.x);
+			element = elementByLine(_textFlow.lastChild, point.x);
 		} else {
-			index = 0;
-			_lines.every(function (line) {
-				var top = index * _lineHeight + _margin;
+			for (var index = _textFlow.childElementCount - 1; index >= 0; index--) {
+				var line = _textFlow.childNodes[index];
+				var top = index * _lineHeight;
 				var bottom = top + _lineHeight;
-				var match = point.y > top && point.y <= bottom ;
+				var match = point.y > top && point.y <= bottom;
 				if (match) {
 					if(contour) {
-						charNode = point.x < _margin? line.chars.firstElement() : line.chars.lastElement();
+						element = _elements[(point.x < 0? line.firstChild.firstChild : line.lastChild.lastChild).getAttribute("data-index")];
 					} else {
-						charNode = getNearestCharInLine(line, point.x);
+						element = elementByLine(line, point.x);
 					}
-					insertBefore = charNode == line.chars.lastElement() && line != _lines.lastElement();
+					nearestPosition.insertBefore = element.source() == line.lastChild.lastChild && line != _textFlow.lastChild;
+					break;
 				}
-				index++;
-				return charNode == undefined;
-			});
-		}
-		dataChar = charNode.getAttribute("data-char");
-		position = Number(dataChar) + (point.x > (charNode.getPosition().x + _elementsWidth[charNode.textContent] / 2)? 1 : 0);
-		return {position:position, insertBefore:insertBefore};*/
-
-	/*	function getNearestCharInLine(line, x) {
-		var charNode;
-		line.chars.every(function (char) {
-			var left = char.getPosition().x;
-			var right = left + _elementsWidth[char.textContent];
-			if(x < left || x < right || char == line.chars.lastElement()) {
-				charNode = char;
 			}
-			return charNode == undefined;
-		});
-		return charNode;
-	}*/
+		}
+		nearestPosition.index = _elements.indexOf(element) + (point.x > (element.x() + _elementsWidth[element.text()] / 2)? 1 : 0);
+		return nearestPosition;
 	}
 
 	self.caretPosition = function() {
-		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + _lineHeight / 2};
-	}
-
-	self.margin = function(value) {
-		_margin = value;
-		self.render();
+		return {x:Number(_IBeam.getAttribute("x")), y:Number(_IBeam.getAttribute("y")) + _fontSize};
 	}
 
 	self.focus = function(value) {
-		return
 		_focus = value;
 		setIBeam(_focus);
 		if(_focus) {
-			_textFlow.appendChild(_IBeam);
+			_svg.appendChild(_IBeam);
 		} else {
 			if(_IBeam.parentNode) {
-				_textFlow.removeChild(_IBeam);
+				_svg.removeChild(_IBeam);
 			}
 		}
 	}
 
-	self.getLineHeight = function() {
+	self.lineHeight = function() {
 		return _lineHeight;
 	}
-	
 
 	self.render = function(elements, width, height) {
 		if(!arguments.length) {
@@ -176,91 +170,82 @@ function TextDisplay() {
 			width = _width;
 			height = _height;
 		}
+		_computedWidth = 0;
 		while (_textFlow.firstChild) {
 		    _textFlow.removeChild(_textFlow.firstChild);
 		}
-		var block, blockElements, x, y;
+		var line, block, blockElements, lastElement;
+		var hasBreak = false;
+		var x = 0;
+		var y = 0;
 		var index = 0;
 		_lines = [];
-		_elements = elements || [new Character(NBSP)];
+		_elements = elements.concat(new Character("\u200B")) || [new Character("\u00A0")];
 		_elements.forEach(function (element) {
-			var isFirstBlock = block == undefined
-			var isEmpty = elements.length == 0;
-			var isSpace = block.match(NBSP);
-			var isBoundary = element.text().match(/\b/);
-			var isPill = element.type() == "pill";
-			if(isFirstBlock || isPill || isBoundary) {
-				block = _textFlow.appendChild(document.createElementNS(NS, "g"));
-				blockElements = [];
+			var isFirstLine = line == undefined;
+			var isSpace = element.text().match(/\s/);
+			var isBoundary = block == undefined || element.text().match(/\s/) || lastElement.type() == "pill" || lastElement.text().match(/\s/);
+			var overFlows = !isFirstLine && (x > width && (lastElement.type() == "pill" || !lastElement.text().match(/\s/)));
+			var newBlock = element.type() == "pill" || isBoundary;
+			hasBreak = hasBreak || (lastElement != undefined? lastElement.text().match(/\s/) : false);
+			if(line == undefined || (overFlows && hasBreak)) {
+				hasBreak = false;
+				line = _textFlow.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "g"));
+				line.setAttribute("data-index", _textFlow.childElementCount - 1);
+				if(blockElements) {
+					var offsetX = blockElements.firstElement().x();
+					blockElements.forEach(function(blockElement) {
+						blockElement.offset(-offsetX, _lineHeight);
+					});
+					line.appendChild(block);
+					x -= offsetX;
+				} else {
+					x = 0;
+				}
+				y = isFirstLine? _fontSize : y + _lineHeight;
 			}
-			block.appendChild(element.source())
+			if(newBlock) {
+				blockElements = [];
+				block = line.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "g"));
+			}
 			blockElements.push(element);
+			block.appendChild(element.source());
 			if(_elementsWidth[element.text()] == undefined) {
-				var boundingBox = element.source().getBBox();
+				var boundingBox = element.draw();
 				_elementsWidth[element.text()] = boundingBox.width;
 				_lineHeight = _lineHeight || boundingBox.height;
+			} else {
+				element.draw(_elementsWidth[element.text()]);
 			}
 			element.move(x, y);
 			element.index(index);
 			x += _elementsWidth[element.text()];
 			index++;
-		});
-		/*
-		var blocks = string.scan(/(\S+|\s+)/g);
-		var chars, dx, x, y, lineNode;
-		var size = {width:0, height:0};
-		blocks.forEach(function(block) {
-			block = block.replace(/ /g, NBSP);
-			dx = 0;
-			chars.forEach(function(char) {
-				charNode.move(dx, 0);
-					"data-char":_elements.length,
-					"data-block":_blocks.length
-				dx += _elementsWidth[char];
-			});
-			if(lineNode == undefined || (x + dx > width - _margin * 2 && !isTrailingSpace)) {
-				x = _margin;
-				y = _lines.length? y + _lineHeight : _margin + _fontSize;
-				lineNode = _textFlow.appendChild(document.createElementNS(NS, "g"));
-				_lines.push({node:lineNode, blocks:[], chars:[]});
+			if(lastElement != undefined && (lastElement.type() == "pill" || !lastElement.text().match(/\s/))) {
+				_computedWidth = Math.max(_computedWidth, lastElement.x() + _elementsWidth[lastElement.text()]);
 			}
-			lineNode.appendChild(blockNode);
-			blockCharNodes.forEach(function(charNode) {
-				charNode.setAttributes({
-					"data-line":_lines.lastIndex(),
-				});
-				charNode.offset(x, y);
-			});
-			_blocks.push({node:blockNode, chars:blockCharNodes});
-			_lines.lastElement().chars = _lines.lastElement().chars.concat(blockCharNodes);
-			_lines.lastElement().blocks.push(blockNode);
-			x += dx;
-			if(!isTrailingSpace || isEmpty) size.width = Math.max(size.width, x);
+			lastElement = element;
 		});
-		size.width += _margin;
-		size.height = y + _margin;
-		_width = size.width;
-		_height = size.height;
-		_wrapper.setAttribute("style", "width:" + Math.max(_container.clientWidth, _width) + "px;height:" + Math.max( _container.clientHeight, _height) + "px;");*/
+		_computedWidth = Math.max(x, _computedWidth);
+		_width = Math.max(_computedWidth, width);
+		_computedHeight = y;
+		_height = Math.max(_computedHeight, height);
 	}
 
-	function getPath(start, end) {
-		var positionFrom = _elements[start].getPosition();
-		var positionTo = _elements[end].getPosition();
-		if(end == _elements.length) {
-			positionTo.x += _elementsWidth[_elements[to].textContent];
-		}
-		var range = [Number(_elements[from].getAttribute("data-line")), Number(_elements[to].getAttribute("data-line"))];
+	function selectionPath(start, end) {
+		var from = _elements[start];
+		var to = _elements[end - 1];
+		var range = [Number(from.source().parentNode.parentNode.getAttribute("data-index")), Number(to.source().parentNode.parentNode.getAttribute("data-index"))];
 		var path = ""; 
 		for (var index = range[0]; index <= range[1]; index++) {
-			var line = _lines[index].node;
-			var last = line.lastChild.lastChild;
-			var rect = {left:_margin, top:_margin + index * _lineHeight, right:last.getPosition().x + _elementsWidth[last.textContent], bottom:_margin + (index + 1) * _lineHeight};
+			var line = _textFlow.childNodes[index];
+			var last = _elements[line.lastChild.lastChild.getAttribute("data-index")];
+			var rect = {left:0, top:0 + index * _lineHeight, right:last.x() + _elementsWidth[last.text()], bottom:(index + 1) * _lineHeight};
 			if(index == range[0]) {
-				rect.left = positionFrom.x;
+				rect.left = from.x();
 			}
 			if(index == range[1]) {
-				rect.right = positionTo.x;
+				rect.right = to.x() + _elementsWidth[to.text()];
 			}
 			rect.left = Math.round(rect.left);
 			rect.top = Math.round(rect.top);
@@ -276,9 +261,9 @@ function TextDisplay() {
 
 	function toogleIBeam() {
 		if(_IBeam.parentNode) {
-			_textFlow.removeChild(_IBeam);
+			_svg.removeChild(_IBeam);
 		} else {
-			_textFlow.appendChild(_IBeam);
+			_svg.appendChild(_IBeam);
 		}
 	}
 
@@ -286,13 +271,13 @@ function TextDisplay() {
 		window.clearInterval(_IBeamInterval);
 		if(value && _focus) {
 			_IBeamInterval = window.setInterval(toogleIBeam, 500);
-			_textFlow.appendChild(_IBeam);
+			_svg.appendChild(_IBeam);
 		} else if(_IBeam.parentNode) {
-			_textFlow.removeChild(_IBeam);
+			_svg.removeChild(_IBeam);
 		}
 	}
 
-	function getFontSize(TextClass) {
+	function fontSize(TextClass) {
 		var text = document.body.appendChild(document.createElement("div"));
 		text.setAttribute("class", TextClass);
 		text.textContent = "X";
