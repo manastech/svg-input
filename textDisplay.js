@@ -20,15 +20,13 @@ function TextDisplay() {
 	var _elements = [];
 	var _elementsWidth = [];
 
-	//autoexpand
-	//texinput autoscroll top
+	//dispatch drag event
+	//pill on drop update caret
+	//caret got hidden
 	//cant drag selection from first char
-	//wrap spaces
-	//click pills select
 	//jump move caret with insertBefore?
+	//click pills select
 	//Pill hover active focus style
-	//create pill
-	//drag pill
 	//firefox font size
 	//cascade changes
 
@@ -164,6 +162,10 @@ function TextDisplay() {
 		return _lineHeight;
 	}
 
+	self.fontSize = function() {
+		return _fontSize;
+	}
+
 	self.render = function(elements, width, height) {
 		if(!arguments.length) {
 			elements = _elements;
@@ -175,21 +177,19 @@ function TextDisplay() {
 		    _textFlow.removeChild(_textFlow.firstChild);
 		}
 		var line, block, blockElements, lastElement;
-		var hasBreak = false;
+		var breakable = false;
 		var x = 0;
 		var y = 0;
 		var index = 0;
 		_lines = [];
 		_elements = elements.concat(new Character("\u200B")) || [new Character("\u00A0")];
 		_elements.forEach(function (element) {
-			var isFirstLine = line == undefined;
-			var isSpace = element.text().match(/\s/);
-			var isBoundary = block == undefined || element.text().match(/\s/) || lastElement.type() == "pill" || lastElement.text().match(/\s/);
-			var overFlows = !isFirstLine && (x > width && (lastElement.type() == "pill" || !lastElement.text().match(/\s/)));
-			var newBlock = element.type() == "pill" || isBoundary;
-			hasBreak = hasBreak || (lastElement != undefined? lastElement.text().match(/\s/) : false);
-			if(line == undefined || (overFlows && hasBreak)) {
-				hasBreak = false;
+			var boundary = block == undefined || element.text().match(/\s/) || lastElement.type() == "pill" || lastElement.text().match(/\s/);
+			var overflow = x > width;
+			breakable = breakable || (lastElement != undefined? lastElement.type() != "pill" && lastElement.text().match(/\s/) != null : false);
+			if(line == undefined || (overflow && breakable)) {
+				y = line == undefined? _fontSize : y + _lineHeight;
+				breakable = false;
 				line = _textFlow.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "g"));
 				line.setAttribute("data-index", _textFlow.childElementCount - 1);
 				if(blockElements) {
@@ -202,9 +202,8 @@ function TextDisplay() {
 				} else {
 					x = 0;
 				}
-				y = isFirstLine? _fontSize : y + _lineHeight;
 			}
-			if(newBlock) {
+			if(element.type() == "pill" || boundary) {
 				blockElements = [];
 				block = line.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "g"));
 			}

@@ -16,7 +16,7 @@ function TextInput(containerId) {
 	var _button;
 	var _autoExpand;
 	var _minHeight;
-	var _scrollHeight;
+	var _scrollHeight = 0;
 	var _dragTarget;
 	var _debug;
 
@@ -29,7 +29,8 @@ function TextInput(containerId) {
 		_container.addEventListener("mousedown", mouseHandler);
 		_container.addEventListener("dblclick", doubleClickHandler);
 		_wrapper = _container.appendChild(document.createElement("div"));
-		_wrapper.setAttribute("id","wrapper");
+		_wrapper.style.cursor = "text";
+		_wrapper.id = "wrapper";
 		_wrapper.appendChild(_display.source());
 		_button = _container.parentNode.insertBefore(document.createElement("button"), _container.nextSibling);
 		_button.textContent = "Create pill";
@@ -46,12 +47,12 @@ function TextInput(containerId) {
 			_focus = value;
 			if(_focus) {
 				document.addEventListener("click", clickOutsideHandler);
-				_container.setAttribute("class", "svgInput svgInput-focus");
+				_container.class = "svgInput svgInput-focus";
 				_display.focus(true);
 				_keyTracker.activate();
 			} else {
 				document.removeEventListener("click", clickOutsideHandler);
-				_container.setAttribute("class", "svgInput");
+				_container.class =  "svgInput";
 				_display.focus(false);
 				_keyTracker.deactivate();
 			}
@@ -85,7 +86,7 @@ function TextInput(containerId) {
 						if(typeof data.lastElement() != "string") {
 							data.push("");
 						}
-						data.lastElement() = data.lastElement() + element.text();
+						data[data.lastIndex()] = data.lastElement() + element.text();
 						break;
 					case "pill":
 						data.push({id:element.id(), text:element.text()});
@@ -132,13 +133,14 @@ function TextInput(containerId) {
 			_caret = Math.max(0, Math.min(_elements.length, value));
 			_display.moveCaret(_caret);
 			var position = _display.caretPosition();
-			if(_container.scrollLeft + _margin > position.x) {
-				_container.scrollLeft = position.x - _margin;
+			if(_container.scrollLeft > position.x) {
+				_container.scrollLeft = position.x;
 			} else if(_container.scrollLeft + _container.clientWidth - _margin * 2 < position.x) {
 				_container.scrollLeft = position.x + _margin * 2 - _container.clientWidth;
 			}
-			if(_container.scrollTop + _margin > position.y) {
-				_container.scrollTop = position.y - _margin;
+			console.log(_container.scrollLeft  , position.x, _display.width())
+			if(_container.scrollTop > position.y - _display.fontSize()) {
+				_container.scrollTop = position.y - _display.fontSize();
 			} else if(_container.scrollTop + _container.clientHeight - _margin * 2 < position.y) {
 				_container.scrollTop = position.y + _margin * 2 - _container.clientHeight;
 			}
@@ -181,22 +183,19 @@ function TextInput(containerId) {
 	}
 
 	self.render = function() {
-		if(_autoExpand) {
-			_container.style.height = _minHeight;
-		}
 		var style = window.getComputedStyle(_container);
-		var innerWidth = Number(style.getPropertyValue("width").match(/\d+/));
-		var innerHeight = Number(style.getPropertyValue("height").match(/\d+/));
-		_minHeight = _minHeight || innerHeight;
-		innerWidth -= _margin * 2;
-		innerHeight -= _margin * 2;
-		_display.render(_elements, innerWidth, _autoExpand? _minHeight : innerHeight);
-		var overFlowX = _elements.length && _display.width() > innerWidth;
-		var overFlowY = _elements.length && _display.height() > innerHeight && !_autoExpand;
-		_scrollHeight = 15//_scrollHeight || Number(style.getPropertyValue("height").match(/\d+/)) - _container.clientHeight;
-		var width = overFlowX? _container.clientWidth - _margin * 2 : innerWidth;
-		var height = overFlowY? _container.clientHeight - _margin * 2 : innerHeight;
-		if(overFlowX || overFlowY) {
+		var innerWidth = Number(style.getPropertyValue("width").match(/\d+/)) - _margin * 2;
+		var innerHeight = Number(style.getPropertyValue("height").match(/\d+/)) - _margin * 2;
+		_minHeight = _minHeight || Number(style.getPropertyValue("height").match(/\d+/));
+		_display.render(_elements, innerWidth, innerHeight);
+		var overflowX = _elements.length && _display.width() > innerWidth;
+		var overflowY = _elements.length && _display.height() > innerHeight && !_autoExpand;
+		if(overflowX) {
+			_scrollHeight = _scrollHeight || _minHeight - _container.clientHeight;
+		}
+		var width = overflowY? _container.clientWidth - _margin * 2 : innerWidth;
+		var height = overflowX? _container.clientHeight - _margin * 2 : innerHeight;
+		if(overflowX || overflowY) {
 			_display.render(_elements, width, height);
 		}
 		if(_selection.length()) {
@@ -204,17 +203,15 @@ function TextInput(containerId) {
 		} else {
 			_display.clearSelection();
 		}
-		if(!overFlowX) _container.scrollLeft = 0;
-		if(!overFlowY) _container.scrollTop = 0;
-		_wrapper.setAttribute("style", "padding:" + _margin + "px;width:" +  _display.width() + "px;height:" + _display.height() + "px;");
-		_container.setAttribute("style", "overflow-x:" + (overFlowX? "scroll" : "hidden") + ";overflow-y:" + (overFlowY && !_autoExpand? "scroll" : "hidden"));
+		if(!overflowX) _container.scrollLeft = 0;
+		if(!overflowY) _container.scrollTop = 0;
+		_wrapper.style.padding = _margin + "px";
+		_wrapper.style.width = _display.width() + "px";
+		_wrapper.style.height = _display.height() + "px";
+		_container.style.overflowX = overflowX? "scroll" : "hidden";
+		_container.style.overflowY = overflowY && !_autoExpand? "scroll" : "hidden";
 		if(_autoExpand) {
-			var contentHeight = _display.height() + _margin * 2;
-			if(_display.height() - _display.computedHeight() == 0 && overFlowX) {
-				contentHeight += _scrollHeight;
-				console.log("scroll", _scrollHeight)
-			}
-			console.log(contentHeight)
+			var contentHeight = _display.computedHeight() + _margin * 2 + (overflowX? _scrollHeight : 0);
 			_container.style.height = Math.max(_minHeight, contentHeight) + "px";
 			_container.scrollTop = 0;
 		}
@@ -380,7 +377,11 @@ function TextInput(containerId) {
 		for (var index = _selection.start(); index < _selection.end(); index++) {
 			label += _elements[index].text();
 		}
-		_elements.splice(_selection.start(), _selection.length(), new Pill(undefined, label));
+		if(self.GUIDgenerator != undefined) {
+			var id = self.GUIDgenerator();
+		}
+		console.log(id);
+		_elements.splice(_selection.start(), _selection.length(), new Pill(id, label));
 		_selection.clear();
 		self.invalidate();
 	}

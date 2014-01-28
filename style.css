@@ -1,5 +1,4 @@
 .svgInput {
-	cursor:text;
 	width:100px;
 	height:100px;
 	background: #ffffff;
@@ -45,8 +44,4 @@
 
 .pill-focus {
 	fill:#ff6600;
-}
-
-#wrapper {
-	padding:5px;
 }

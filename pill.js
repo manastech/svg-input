@@ -15,14 +15,15 @@ function Pill(id, text) {
 
 	function init(id, text) {
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "g");
-		_source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "pill"));
 		_source.setAttribute("type", "pill");
+		_source.setAttribute("z-index", "1");
 		_background = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "rect"));
 		_background.setAttribute("rx", 3);
 		_background.setAttribute("ry", 3);
 		_label = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "text"));
 		_label.setAttribute("cursor", "move");
 		self.focus(false);
+		self.id(id);
 		self.text(text);
 		self.move(0, 0);
 		self.index(0);

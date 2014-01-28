@@ -14,18 +14,43 @@
       
       <script type="text/javascript" src="textDisplay.js"></script>
   		<script>
+        function S4() {
+           return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+        }
+
+        function guid() {
+           return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
+        }
+        var input;
 	    	window.onload = function() {
-		    	var input = new TextInput("input");
-          input.data(["Hola mundo ", {id:1, text:"this is a pill far too wide"},"! new line"]);
+		    	input = new TextInput("input");
+          input.GUIDgenerator = guid;
+          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide"},"! new line"]);
           input.autoExpand(true);
           //input.data(["lorem ipsum dolor sit amet"]);
           //input.debug(true);
+          window.setInterval(function () {
+            var data = input.data();
+            var parsedData = "";
+            data.forEach(function (entry) {
+              switch(typeof entry) {
+                case "string":
+                  parsedData += entry;
+                  break;
+                case "object":
+                  parsedData += "(" + entry.text + " [id:" + entry.id + "])"
+                  break;
+              }
+            });
+            document.getElementById("data").innerHTML = parsedData;
+          }, 1000);
 		    }
 	    </script>
     </head>
     <body>
       <div style="margin-top:50px;margin-left:50px;">
-	     <div id="input" class="svgInput"></div>
+        <div id="data" class="char">...</div>
+        <div id="input" class="svgInput"></div>
       </div>
    	</body>
 </html>
