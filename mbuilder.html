@@ -16,7 +16,7 @@
       <script type="text/javascript" src="textDisplay.js"></script>
   		<script>
 
-        var input, phantom, button;
+        var input, phantom, createButton, updateButton;
 
         function S4() {
            return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
@@ -28,19 +28,28 @@
 
         function displayData() {
           var data = input.data();
-          var parsedData = "Data {";
+          var string = "Data {";
           data.forEach(function (entry) {
             switch(typeof entry) {
               case "string":
-                parsedData += entry;
+                string += entry;
                 break;
               case "object":
-                parsedData += "(" + entry.text + " [id:" + entry.id + "])"
+                string += "(" + entry.text + " [id:" + entry.id + ", opperator:" + entry.opperator + "])"
                 break;
             }
           });
-          parsedData += "}";
-          document.getElementById("data").innerHTML = parsedData;
+          string += "}";
+          document.getElementById("data").innerHTML = string;
+        }
+
+        function updatePill() {
+          var pill = input.getPillById("116afaa1-89a5-c86c-e03d-83dd5fab97be");
+          pill.id(undefined);
+          pill.text("this is a pill");
+          pill.opperator("min");
+         input.render();
+          pill.focus(true);
         }
 
         function mouseHandler(e) {
@@ -55,7 +64,7 @@
 
         function selectHandler(e) {
           console.log("Select {length:" + e.info.length + ", start:" + e.info.start + ", end:" + e.info.end + ", from:" + e.info.from + ", to:" + e.info.to + "}");
-          button.style.display = e.info.length? "block" : "none";
+          createButton.style.display = e.info.length? "inline-block" : "none";
         }
 
         function dragHandler(e) {
@@ -84,10 +93,12 @@
           input.addEventListener(Event.SELECT, selectHandler);
           input.addEventListener(Event.DRAG, dragHandler);
           input.addEventListener(Event.DROP, dropHandler);
-          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide"},"! new line"]);
-          button = document.getElementById("createButton");
-          button.style.display = "none";
-          button.addEventListener("click", input.createPill);
+          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide", opperator:"max"},"! new line"]);
+          createButton = document.getElementById("createButton");
+          createButton.style.display = "none";
+          createButton.addEventListener("click", input.createPill);
+          updateButton = document.getElementById("updateButton");
+          updateButton.addEventListener("click", updatePill);
           window.setInterval(displayData, 1000);
         }
         
@@ -99,7 +110,10 @@
       <div style="margin-top:50px;margin-left:50px;">
         <div id="data" class="char">...</div>
         <div id="input" class="svgInput"></div>
-        <button id="createButton">Create pill</button>
+        <div>
+          <button id="updateButton" style="display:inline-block;">Update pill</button>
+          <button id="createButton" style="display:inline-block;">Create pill</button>
+        </div>
       </div>
    	</body>
 </html>

@@ -1,4 +1,4 @@
-function Pill(id, text) {
+function Pill(id, text, opperator) {
 
 	var self = this;
 	var _x;
@@ -7,13 +7,14 @@ function Pill(id, text) {
 	var _text = "";
 	var _source;
 	var _text;
+	var _opperator;
 	var _label;
 	var _background;
 	var _index;
 	var _focus;
 	var _boundingBox;
 
-	function init(id, text) {
+	function init(id, text, opperator) {
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "g");
 		_source.setAttribute("type", "pill");
 		_source.setAttribute("z-index", "1");
@@ -25,6 +26,7 @@ function Pill(id, text) {
 		self.focus(false);
 		self.id(id);
 		self.text(text);
+		self.opperator(opperator);
 		self.move(0, 0);
 		self.index(0);
 	}
@@ -63,6 +65,15 @@ function Pill(id, text) {
 		} else {
 			_text = value;
 			_label.textContent = _text;
+			_boundingBox = undefined;
+		}
+	}
+
+	self.opperator = function(value) {
+		if(!arguments.length) {
+			return _opperator;
+		} else {
+			_opperator = value;
 		}
 	}
 
@@ -95,7 +106,7 @@ function Pill(id, text) {
 			_boundingBox.width = _boundingBox.width + padding * 2;
 			_background.setAttribute("width", _boundingBox.width);
 			_background.setAttribute("height", _boundingBox.height);
-			_background.setAttribute("transform", "translate(0," + _boundingBox.y + ")");
+			_background.setAttribute("transform", "translate(0," + (_boundingBox.y - _y) + ")");
 		}
 		return _boundingBox;
 	}
@@ -121,5 +132,5 @@ function Pill(id, text) {
 		return "(" + self.text() + ")";
 	}
 
-	init(id, text);
+	init(id, text, opperator);
 }

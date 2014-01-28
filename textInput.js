@@ -94,7 +94,7 @@ function TextInput(containerId) {
 						data[data.lastIndex()] = data.lastElement() + element.text();
 						break;
 					case "pill":
-						data.push({id:element.id(), text:element.text()});
+						data.push({id:element.id(), text:element.text(), opperator:element.opperator()});
 						break;
 				}
 			});
@@ -112,7 +112,7 @@ function TextInput(containerId) {
 						info += entry;
 						break;
 					case "object":
-						_elements.push(new Pill(entry.id, entry.text.replace(/\s/g, "\u00A0")));
+						_elements.push(new Pill(entry.id, entry.text.replace(/\s/g, "\u00A0"), entry.opperator));
 						info += "(" + entry.text + ")";
 						break;
 				}
@@ -191,6 +191,17 @@ function TextInput(containerId) {
 		return boundary;
 	}
 
+	self.getPillById = function(id) {
+		var pill;
+		_elements.every(function(element) {
+			if(element.type() == "pill" && element.id() == id) {
+				pill = element;
+			}
+			return pill == undefined;
+		});
+		return pill;
+	} 
+
 	self.createPill = function() {
 		var label = "";
 		for (var index = _selection.start(); index < _selection.end(); index++) {
@@ -205,6 +216,7 @@ function TextInput(containerId) {
 	}
 
 	self.render = function() {
+		console.log("render")
 		var innerWidth = self.width() - _margin * 2;
 		var innerHeight = self.height() - _margin * 2;
 		_minHeight = _minHeight || self.height();
