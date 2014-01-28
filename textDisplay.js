@@ -20,16 +20,6 @@ function TextDisplay() {
 	var _elements = [];
 	var _elementsWidth = [];
 
-	//dispatch drag event
-	//pill on drop update caret
-	//caret got hidden
-	//cant drag selection from first char
-	//jump move caret with insertBefore?
-	//click pills select
-	//Pill hover active focus style
-	//firefox font size
-	//cascade changes
-
 	function init() {
 		_fontSize = fontSize("char");
 		_lineHeight = _fontSize * 1.2;

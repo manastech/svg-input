@@ -8,15 +8,20 @@ function Selection() {
 	var _from, _to, _start, _end;
 
 	self.set = function(from, to) {
-		from = Math.max(0, Math.min(_limit, from));
-		to =  Math.max(0, Math.min(_limit, to));
-		if(_from != from || _to != to) {
-			_from = from;
-			_to = to;
-			_start = Math.min(_from, _to);
-			_end = Math.max(_from, _to);
-			_length = _end - _start || 0;
-			self.dispatchEvent(new Event(Event.SELECT, {from:_from, to:_to, start:_start, end:_end, length:_length}));
+		var empty = from == undefined || to == undefined;
+		if(empty) {
+			self.clear();
+		} else {
+			from = Math.max(0, Math.min(_limit, from));
+			to = Math.max(0, Math.min(_limit, to));
+			if(_from != from || _to != to) {
+				_from = from;
+				_to = to;
+				_start = Math.min(_from, _to);
+				_end = Math.max(_from, _to);
+				_length = _end - _start || 0;
+				self.dispatchEvent(new Event(Event.SELECT, {from:_from, to:_to, start:_start, end:_end, length:_length}));
+			}
 		}
 	}
 

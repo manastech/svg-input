@@ -13,7 +13,6 @@ function TextInput(containerId) {
 	var _elements = [];
 	var _focus;
 	var _margin;
-	var _button;
 	var _autoExpand;
 	var _minHeight;
 	var _scrollHeight = 0;
@@ -32,12 +31,8 @@ function TextInput(containerId) {
 		_wrapper.style.cursor = "text";
 		_wrapper.id = "wrapper";
 		_wrapper.appendChild(_display.source());
-		_button = _container.parentNode.insertBefore(document.createElement("button"), _container.nextSibling);
-		_button.textContent = "Create pill";
-		_button.addEventListener("click", buttonClickHandler);
-		_button.style.display = "none";
 		self.invalidate();
-		self.margin(5)
+		self.margin(5);
 	}
 
 	self.focus = function(value) {
@@ -77,6 +72,16 @@ function TextInput(containerId) {
 		}
 	}
 
+	self.width = function() {
+		var style = window.getComputedStyle(_container);
+		return Number(style.getPropertyValue("width").match(/\d+/));
+	}
+
+	self.height = function() {
+		var style = window.getComputedStyle(_container);
+		return Number(style.getPropertyValue("height").match(/\d+/));
+	}
+
 	self.data = function(value) {
 		if(!arguments.length) {
 			var data = [];
@@ -96,6 +101,7 @@ function TextInput(containerId) {
 			return data;
 		} else {
 			_elements = [];
+			var info = "";
 			value.forEach(function(entry) {
 				switch(typeof entry) {
 					case "string":
@@ -103,15 +109,18 @@ function TextInput(containerId) {
 						chars.forEach(function(char) {
 							_elements.push(new Character(char));
 						});
+						info += entry;
 						break;
 					case "object":
 						_elements.push(new Pill(entry.id, entry.text.replace(/\s/g, "\u00A0")));
+						info += "(" + entry.text + ")";
 						break;
 				}
 			});
 			self.caret(_elements.length);
 			_selection.limit(_elements.length);
 			self.invalidate();
+			self.dispatchEvent(new Event(Event.CHANGE, info));
 		}
 	}
 
@@ -124,6 +133,7 @@ function TextInput(containerId) {
 		}
 		_selection.limit(_elements.length);
 		self.render();
+		self.dispatchEvent(new Event(Event.CHANGE, char));
 	}
 
 	self.caret = function(value) {
@@ -138,7 +148,6 @@ function TextInput(containerId) {
 			} else if(_container.scrollLeft + _container.clientWidth - _margin * 2 < position.x) {
 				_container.scrollLeft = position.x + _margin * 2 - _container.clientWidth;
 			}
-			console.log(_container.scrollLeft  , position.x, _display.width())
 			if(_container.scrollTop > position.y - _display.fontSize()) {
 				_container.scrollTop = position.y - _display.fontSize();
 			} else if(_container.scrollTop + _container.clientHeight - _margin * 2 < position.y) {
@@ -182,11 +191,23 @@ function TextInput(containerId) {
 		return boundary;
 	}
 
+	self.createPill = function() {
+		var label = "";
+		for (var index = _selection.start(); index < _selection.end(); index++) {
+			label += _elements[index].text();
+		}
+		if(self.GUIDgenerator != undefined) {
+			var id = self.GUIDgenerator();
+		}
+		_elements.splice(_selection.start(), _selection.length(), new Pill(id, label));
+		_selection.clear();
+		self.invalidate();
+	}
+
 	self.render = function() {
-		var style = window.getComputedStyle(_container);
-		var innerWidth = Number(style.getPropertyValue("width").match(/\d+/)) - _margin * 2;
-		var innerHeight = Number(style.getPropertyValue("height").match(/\d+/)) - _margin * 2;
-		_minHeight = _minHeight || Number(style.getPropertyValue("height").match(/\d+/));
+		var innerWidth = self.width() - _margin * 2;
+		var innerHeight = self.height() - _margin * 2;
+		_minHeight = _minHeight || self.height();
 		_display.render(_elements, innerWidth, innerHeight);
 		var overflowX = _elements.length && _display.width() > innerWidth;
 		var overflowY = _elements.length && _display.height() > innerHeight && !_autoExpand;
@@ -255,31 +276,38 @@ function TextInput(containerId) {
 		}
 	}
 
-	function mousePosition(e) {
-		var mouse = {};
-		if (e.pageX || e.pageY) { 
-		  mouse.x = e.pageX;
-		  mouse.y = e.pageY;
-		} else { 
-		  mouse.x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
-		  mouse.y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
-		} 
-		mouse.x -= _container.offsetLeft;
-		mouse.y -= _container.offsetTop;
-		mouse.x += _container.scrollLeft;
-		mouse.y += _container.scrollTop;
-		return mouse;
-	}
-
 	function mouseHandler(e) {
 		if(_container.contains(e.target)) {
 			self.focus(true);
 		}
 		if(e.target == _container) return;
+		var mouse = mousePosition(e);
+		var mouseX = mouse.x;
+		var mouseY = mouse.y;
+		mouse.x -= _container.offsetLeft;
+		mouse.y -= _container.offsetTop;
+		mouse.x += _container.scrollLeft;
+		mouse.y += _container.scrollTop;
 		switch(e.type) {
 			case "mousedown":
-				if(e.target.parentNode.getAttribute("type")) {
+				if(e.target.parentNode.getAttribute("type") == "pill") {
 					_dragTarget = e.target.parentNode;
+					var bounds = _dragTarget.getBBox();
+					var pill = document.createElement("div");
+					var svg = pill.appendChild(document.createElementNS("http://www.w3.org/2000/svg","svg"));
+					svg.style.position = "absolute";
+					svg.style.left = (bounds.x - mouse.x + _margin) + "px";
+					svg.style.top = (bounds.y - mouse.y + _margin) + "px";
+					var clone = svg.appendChild(_dragTarget.cloneNode(true));
+					pill.style.width = bounds.width + "px";
+		            pill.style.height = bounds.height + "px";
+					for (var index = clone.childElementCount - 1; index >= 0; index--) {
+						var child = clone.childNodes[index];
+						child.setAttribute("x", 0);
+						child.setAttribute("y", _display.fontSize());
+					}
+					_wrapper.style.cursor = "move";
+					self.dispatchEvent(new Event(Event.DRAG, {pill:pill, mouseX:mouseX, mouseY:mouseY}));
 				}
 				window.addEventListener("mousemove", mouseHandler);
 				window.addEventListener("mouseup", mouseHandler);
@@ -291,7 +319,6 @@ function TextInput(containerId) {
 		}
 		var caret;
 		var insertBefore = false;
-		var mouse = mousePosition(e);
 		var index = e.target.getAttribute("data-index");
 		if(index) {
 			var element = _elements[index];
@@ -325,16 +352,22 @@ function TextInput(containerId) {
 			case "mouseup":
 				self.caret(caret);
 				if(_dragTarget != undefined) {
+					self.dispatchEvent(new Event(Event.DROP));
+					_wrapper.style.cursor = "text";
 					var index = Number(_dragTarget.getAttribute("data-index"));
-					var element = _elements[index];
-					_elements.splice(index, 1);
-					if(_caret > index) {
-						self.caret(_caret - 1);
+					if(0 <= mouse.x && mouse.x <= self.width() && 0 <= mouse.y && mouse.y <= self.height()) {
+						var element = _elements[index];
+						_elements.splice(index, 1);
+						if(_caret > index) {
+							self.caret(_caret - 1);
+						}
+						_elements.splice(_caret, 0, element);
+						index = _caret;
 					}
-					_elements.splice(_caret, 0, element);
-					self.invalidate();
+					_dragTarget = undefined;
+					self.render();
+					self.caret(index + 1);
 				}
-				_dragTarget = undefined;
 				break;
 		}
 	}
@@ -369,21 +402,7 @@ function TextInput(containerId) {
 		} else {
 			_display.clearSelection();
 		}
-		_button.style.display = _selection.length()? "block" : "none";
-	}
-
-	function buttonClickHandler(e) {
-		var label = "";
-		for (var index = _selection.start(); index < _selection.end(); index++) {
-			label += _elements[index].text();
-		}
-		if(self.GUIDgenerator != undefined) {
-			var id = self.GUIDgenerator();
-		}
-		console.log(id);
-		_elements.splice(_selection.start(), _selection.length(), new Pill(id, label));
-		_selection.clear();
-		self.invalidate();
+		self.dispatchEvent(e);
 	}
 
 	init(containerId);

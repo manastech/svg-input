@@ -59,4 +59,7 @@ function Event(type, info) {
 	this.info = info;
 };
 
+Event.CHANGE = "change";
 Event.SELECT = "select";
+Event.DRAG = "drag";
+Event.DROP = "drop";

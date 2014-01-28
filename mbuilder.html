@@ -3,6 +3,7 @@
 	<head>
       <title>mBuilder</title>
       <link rel="stylesheet" type="text/css" href="style.css">
+      <script type="text/javascript" src="tools.js"></script>
       <script type="text/javascript" src="prototypes.js"></script>
       <script type="text/javascript" src="invalidateElement.js"></script>
       <script type="text/javascript" src="eventDispatcher.js"></script>
@@ -14,6 +15,9 @@
       
       <script type="text/javascript" src="textDisplay.js"></script>
   		<script>
+
+        var input, phantom, button;
+
         function S4() {
            return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
         }
@@ -21,36 +25,81 @@
         function guid() {
            return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
         }
-        var input;
-	    	window.onload = function() {
-		    	input = new TextInput("input");
+
+        function displayData() {
+          var data = input.data();
+          var parsedData = "Data {";
+          data.forEach(function (entry) {
+            switch(typeof entry) {
+              case "string":
+                parsedData += entry;
+                break;
+              case "object":
+                parsedData += "(" + entry.text + " [id:" + entry.id + "])"
+                break;
+            }
+          });
+          parsedData += "}";
+          document.getElementById("data").innerHTML = parsedData;
+        }
+
+        function mouseHandler(e) {
+          var mouse = mousePosition(e);
+          phantom.style.left = mouse.x + "px";
+          phantom.style.top = mouse.y + "px";
+        }
+
+        function changeHandler(e) {
+          console.log("Change {entry:" + e.info + "}");
+        }
+
+        function selectHandler(e) {
+          console.log("Select {length:" + e.info.length + ", start:" + e.info.start + ", end:" + e.info.end + ", from:" + e.info.from + ", to:" + e.info.to + "}");
+          button.style.display = e.info.length? "block" : "none";
+        }
+
+        function dragHandler(e) {
+          console.log("Drag {mouseX:" + e.info.mouseX + ", mouseY:" + e.info.mouseY + "}");
+          phantom = document.body.appendChild(e.info.pill);
+          phantom.style.position = "absolute";
+          phantom.style.opacity = 0.5;
+          phantom.style.left = e.info.mouseX + "px";
+          phantom.style.top = e.info.mouseY + "px";
+          window.addEventListener("mousemove", mouseHandler);
+        }
+
+        function dropHandler(e) {
+          console.log("Drop");
+          if(phantom.parentNode) {
+            phantom.parentNode.removeChild(phantom);
+          }
+          window.removeEventListener("mousemove", mouseHandler);
+        }
+
+        function init() {
+          input = new TextInput("input");
           input.GUIDgenerator = guid;
-          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide"},"! new line"]);
           input.autoExpand(true);
-          //input.data(["lorem ipsum dolor sit amet"]);
-          //input.debug(true);
-          window.setInterval(function () {
-            var data = input.data();
-            var parsedData = "";
-            data.forEach(function (entry) {
-              switch(typeof entry) {
-                case "string":
-                  parsedData += entry;
-                  break;
-                case "object":
-                  parsedData += "(" + entry.text + " [id:" + entry.id + "])"
-                  break;
-              }
-            });
-            document.getElementById("data").innerHTML = parsedData;
-          }, 1000);
-		    }
+          input.addEventListener(Event.CHANGE, changeHandler);
+          input.addEventListener(Event.SELECT, selectHandler);
+          input.addEventListener(Event.DRAG, dragHandler);
+          input.addEventListener(Event.DROP, dropHandler);
+          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide"},"! new line"]);
+          button = document.getElementById("createButton");
+          button.style.display = "none";
+          button.addEventListener("click", input.createPill);
+          window.setInterval(displayData, 1000);
+        }
+        
+        window.onload = init;
+
 	    </script>
     </head>
     <body>
       <div style="margin-top:50px;margin-left:50px;">
         <div id="data" class="char">...</div>
         <div id="input" class="svgInput"></div>
+        <button id="createButton">Create pill</button>
       </div>
    	</body>
 </html>
