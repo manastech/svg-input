@@ -325,7 +325,8 @@ function TextInput(containerId) {
 			caret = Number(index) + (mouse.x > (element.x() + element.source().getBBox().width / 2)? 1 : 0);
 			insertBefore = element.source().parentNode.nextSibling == undefined;
 		} else {
-			var nearestPosition = _display.nearestPosition(mouse, true);
+			var contour = _dragTarget == undefined;
+			var nearestPosition = _display.nearestPosition(mouse, contour);
 			caret = nearestPosition.index;
 			insertBefore = nearestPosition.insertBefore;
 		}

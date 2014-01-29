@@ -118,6 +118,11 @@
             contextMenu.parentNode.removeChild(contextMenu);
             input.render();
           });
+          document.addEventListener("mousedown", function(e) {
+            if(!contextMenu.contains(e.target) && contextMenu.parentNode) {
+              contextMenu.parentNode.removeChild(contextMenu);
+            }
+          });
         }
 
         function addOption(label, option, menu, info, customHandler) {
