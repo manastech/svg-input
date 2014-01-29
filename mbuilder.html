@@ -14,42 +14,56 @@
       <script type="text/javascript" src="pill.js"></script>
       
       <script type="text/javascript" src="textDisplay.js"></script>
-  		<script>
+      <script>
 
         var input, phantom, createButton, updateButton;
 
-        function S4() {
-           return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+        function init() {
+          input = new TextInput("input");
+          input.GUIDgenerator = guid;
+          input.autoExpand(true);
+          input.addEventListener(Event.CHANGE, changeHandler);
+          input.addEventListener(Event.SELECT, selectHandler);
+          input.addEventListener(Event.DRAG, dragHandler);
+          input.addEventListener(Event.DROP, dropHandler);
+          input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
+          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide", opperator:undefined},"! new line"]);
+          createButton = document.getElementById("createButton");
+          createButton.style.display = "none";
+          createButton.addEventListener("click", input.createPill);
+          updateButton = document.getElementById("updateButton");
+          updateButton.addEventListener("click", function() {
+            var pill = input.getPillById("116afaa1-89a5-c86c-e03d-83dd5fab97be");
+            pill.id(undefined);
+            pill.text("this is a pill");
+            pill.opperator("min");
+            input.render();
+            pill.focus(true);
+          });
+          window.setInterval(function() {
+            var data = input.data();
+            var string = "Data {";
+            data.forEach(function (entry) {
+              switch(typeof entry) {
+                case "string":
+                  string += entry;
+                  break;
+                case "object":
+                  string += "(" + (entry.displayText || entry.text) + " [text:" + entry.text + ", id:" + entry.id + ", opperator:" + entry.opperator + "])"
+                  break;
+              }
+            });
+            string += "}";
+            document.getElementById("data").innerHTML = string;
+          }, 100);
         }
 
         function guid() {
            return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
         }
 
-        function displayData() {
-          var data = input.data();
-          var string = "Data {";
-          data.forEach(function (entry) {
-            switch(typeof entry) {
-              case "string":
-                string += entry;
-                break;
-              case "object":
-                string += "(" + entry.text + " [id:" + entry.id + ", opperator:" + entry.opperator + "])"
-                break;
-            }
-          });
-          string += "}";
-          document.getElementById("data").innerHTML = string;
-        }
-
-        function updatePill() {
-          var pill = input.getPillById("116afaa1-89a5-c86c-e03d-83dd5fab97be");
-          pill.id(undefined);
-          pill.text("this is a pill");
-          pill.opperator("min");
-         input.render();
-          pill.focus(true);
+        function S4() {
+           return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
         }
 
         function mouseHandler(e) {
@@ -85,22 +99,38 @@
           window.removeEventListener("mousemove", mouseHandler);
         }
 
-        function init() {
-          input = new TextInput("input");
-          input.GUIDgenerator = guid;
-          input.autoExpand(true);
-          input.addEventListener(Event.CHANGE, changeHandler);
-          input.addEventListener(Event.SELECT, selectHandler);
-          input.addEventListener(Event.DRAG, dragHandler);
-          input.addEventListener(Event.DROP, dropHandler);
-          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide", opperator:"max"},"! new line"]);
-          createButton = document.getElementById("createButton");
-          createButton.style.display = "none";
-          createButton.addEventListener("click", input.createPill);
-          updateButton = document.getElementById("updateButton");
-          updateButton.addEventListener("click", updatePill);
-          window.setInterval(displayData, 1000);
+        function contextMenuHandler(e) {
+          var contextMenu = document.body.appendChild(document.createElement("div"));
+          contextMenu.class = "char";
+          contextMenu.style.position = "absolute";
+          contextMenu.style.backgroundColor = "#cccccc";
+          contextMenu.style.border = "1px solid #999999";
+          contextMenu.style.left = e.info.mouseX + "px";
+          contextMenu.style.top = e.info.mouseY + "px";
+          addOption("Min", "min", contextMenu, e.info);
+          addOption("Max", "max", contextMenu, e.info);
+          addOption("Sum", "sum", contextMenu, e.info);
+          addOption("Average", "average", contextMenu, e.info);
+          addOption("None", undefined, contextMenu, e.info);
+          addOption("Break", undefined, contextMenu, e.info, function() {
+            input.breakPill(e.info.pill.id());
+            contextMenu.parentNode.removeChild(contextMenu);
+            input.render();
+          });
         }
+
+        function addOption(label, option, menu, info, customHandler) {
+            var button = menu.appendChild(document.createElement("button"));
+            button.innerHTML = label;
+            button.style.display = "block";
+            button.style.width = "100%";
+            button.onclick = customHandler || function(e) {
+              info.pill.opperator(option);
+              info.pill.displayText((option != undefined? "<tspan class='opperator'>" + option + " of </tspan>" : "") + info.pill.text());
+              menu.parentNode.removeChild(menu);
+              input.render();
+            }
+          }
         
         window.onload = init;
 

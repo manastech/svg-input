@@ -63,3 +63,4 @@ Event.CHANGE = "change";
 Event.SELECT = "select";
 Event.DRAG = "drag";
 Event.DROP = "drop";
+Event.CONTEXT_MENU = "contextMenu";

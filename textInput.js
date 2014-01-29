@@ -27,6 +27,7 @@ function TextInput(containerId) {
 		_container = document.getElementById(containerId);
 		_container.addEventListener("mousedown", mouseHandler);
 		_container.addEventListener("dblclick", doubleClickHandler);
+		_container.addEventListener("contextmenu", contextMenuHandler);
 		_wrapper = _container.appendChild(document.createElement("div"));
 		_wrapper.style.cursor = "text";
 		_wrapper.id = "wrapper";
@@ -94,7 +95,7 @@ function TextInput(containerId) {
 						data[data.lastIndex()] = data.lastElement() + element.text();
 						break;
 					case "pill":
-						data.push({id:element.id(), text:element.text(), opperator:element.opperator()});
+						data.push({id:element.id(), text:element.text(), displayText:element.displayText(), opperator:element.opperator()});
 						break;
 				}
 			});
@@ -112,7 +113,7 @@ function TextInput(containerId) {
 						info += entry;
 						break;
 					case "object":
-						_elements.push(new Pill(entry.id, entry.text.replace(/\s/g, "\u00A0"), entry.opperator));
+						_elements.push(new Pill(entry.id, (entry.text || "").replace(/\s/g, "\u00A0"), (entry.displayText || "").replace(/\s/g, "\u00A0"), entry.opperator));
 						info += "(" + entry.text + ")";
 						break;
 				}
@@ -124,16 +125,19 @@ function TextInput(containerId) {
 		}
 	}
 
-	self.appendChar = function(char, start, remove) {
-		if(char != undefined) {
-			var character = new Character(char.replace(/\s/g, "\u00A0"));
-			_elements.splice(start, remove, character);
-		} else {
-			_elements.splice(start, remove);
+	self.appendChar = function(string, start, remove) {
+		_elements.splice(start, remove);
+		if(string != undefined) {
+			var chars = string.split("");
+			chars.forEach(function(char) {
+				var character = new Character(char.replace(/\s/g, "\u00A0"));
+				_elements.splice(start, 0, character);
+				start++;
+			});
 		}
 		_selection.limit(_elements.length);
 		self.render();
-		self.dispatchEvent(new Event(Event.CHANGE, char));
+		self.dispatchEvent(new Event(Event.CHANGE, string));
 	}
 
 	self.caret = function(value) {
@@ -200,7 +204,13 @@ function TextInput(containerId) {
 			return pill == undefined;
 		});
 		return pill;
-	} 
+	}
+
+	self.breakPill = function(id, replaceText) {
+		var pill = self.getPillById(id);
+		replaceText = replaceText || pill.text();
+		self.appendChar(replaceText, _elements.indexOf(pill), 1);
+	}
 
 	self.createPill = function() {
 		var label = "";
@@ -216,7 +226,6 @@ function TextInput(containerId) {
 	}
 
 	self.render = function() {
-		console.log("render")
 		var innerWidth = self.width() - _margin * 2;
 		var innerHeight = self.height() - _margin * 2;
 		_minHeight = _minHeight || self.height();
@@ -292,35 +301,14 @@ function TextInput(containerId) {
 		if(_container.contains(e.target)) {
 			self.focus(true);
 		}
-		if(e.target == _container) return;
+		if(e.target == _container || e.button) return;
 		var mouse = mousePosition(e);
-		var mouseX = mouse.x;
-		var mouseY = mouse.y;
 		mouse.x -= _container.offsetLeft;
 		mouse.y -= _container.offsetTop;
 		mouse.x += _container.scrollLeft;
 		mouse.y += _container.scrollTop;
 		switch(e.type) {
 			case "mousedown":
-				if(e.target.parentNode.getAttribute("type") == "pill") {
-					_dragTarget = e.target.parentNode;
-					var bounds = _dragTarget.getBBox();
-					var pill = document.createElement("div");
-					var svg = pill.appendChild(document.createElementNS("http://www.w3.org/2000/svg","svg"));
-					svg.style.position = "absolute";
-					svg.style.left = (bounds.x - mouse.x + _margin) + "px";
-					svg.style.top = (bounds.y - mouse.y + _margin) + "px";
-					var clone = svg.appendChild(_dragTarget.cloneNode(true));
-					pill.style.width = bounds.width + "px";
-		            pill.style.height = bounds.height + "px";
-					for (var index = clone.childElementCount - 1; index >= 0; index--) {
-						var child = clone.childNodes[index];
-						child.setAttribute("x", 0);
-						child.setAttribute("y", _display.fontSize());
-					}
-					_wrapper.style.cursor = "move";
-					self.dispatchEvent(new Event(Event.DRAG, {pill:pill, mouseX:mouseX, mouseY:mouseY}));
-				}
 				window.addEventListener("mousemove", mouseHandler);
 				window.addEventListener("mouseup", mouseHandler);
 				break;
@@ -353,6 +341,25 @@ function TextInput(containerId) {
 					_selection.clear();
 				}
 				self.caret(caret);
+				if(e.target.parentNode.getAttribute("type") == "pill") {
+					_dragTarget = e.target.parentNode;
+					var bounds = _dragTarget.getBBox();
+					var pill = document.createElement("div");
+					var svg = pill.appendChild(document.createElementNS("http://www.w3.org/2000/svg","svg"));
+					svg.style.position = "absolute";
+					svg.style.left = (bounds.x - mouse.x + _margin) + "px";
+					svg.style.top = (bounds.y - mouse.y + _margin) + "px";
+					var clone = svg.appendChild(_dragTarget.cloneNode(true));
+					pill.style.width = bounds.width + "px";
+		            pill.style.height = bounds.height + "px";
+					for (var index = clone.childElementCount - 1; index >= 0; index--) {
+						var child = clone.childNodes[index];
+						child.setAttribute("x", 0);
+						child.setAttribute("y", _display.fontSize());
+					}
+					document.body.style.cursor = "move";
+					self.dispatchEvent(new Event(Event.DRAG, {pill:pill, mouseX:mouse.x + _container.offsetLeft - _container.scrollLeft, mouseY:mouse.y + _container.offsetTop - _container.scrollTop}));
+				}
 				break;
 			case "mousemove":
 				if(_dragTarget == undefined) {
@@ -364,8 +371,6 @@ function TextInput(containerId) {
 			case "mouseup":
 				self.caret(caret);
 				if(_dragTarget != undefined) {
-					self.dispatchEvent(new Event(Event.DROP));
-					_wrapper.style.cursor = "text";
 					var index = Number(_dragTarget.getAttribute("data-index"));
 					if(0 <= mouse.x && mouse.x <= self.width() && 0 <= mouse.y && mouse.y <= self.height()) {
 						var element = _elements[index];
@@ -379,6 +384,8 @@ function TextInput(containerId) {
 					_dragTarget = undefined;
 					self.render();
 					self.caret(index + 1);
+					document.body.style.cursor = "auto";
+					self.dispatchEvent(new Event(Event.DROP));
 				}
 				break;
 		}
@@ -401,9 +408,19 @@ function TextInput(containerId) {
 		}
 	}
 
+	function contextMenuHandler(e) {
+		if(e.target.parentNode.getAttribute("type") == "pill") {
+			var info = {};
+			info.mouseX = e.x;
+			info.mouseY = e.y;
+			info.pill = self.getPillById(e.target.parentNode.getAttribute("data-id"));
+			self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
+		}
+		e.preventDefault();
+	}
+
 	function clickOutsideHandler(e) {
 		if(!_container.contains(e.target)) {
-			e.stopPropagation();
 			self.focus(false);
 		}
 	}

@@ -7,6 +7,7 @@ function Pill(id, text, opperator) {
 	var _text = "";
 	var _source;
 	var _text;
+	var _displayText;
 	var _opperator;
 	var _label;
 	var _background;
@@ -14,7 +15,7 @@ function Pill(id, text, opperator) {
 	var _focus;
 	var _boundingBox;
 
-	function init(id, text, opperator) {
+	function init(id, text, displayText, opperator) {
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "g");
 		_source.setAttribute("type", "pill");
 		_source.setAttribute("z-index", "1");
@@ -26,6 +27,7 @@ function Pill(id, text, opperator) {
 		self.focus(false);
 		self.id(id);
 		self.text(text);
+		self.displayText(displayText);
 		self.opperator(opperator);
 		self.move(0, 0);
 		self.index(0);
@@ -64,7 +66,17 @@ function Pill(id, text, opperator) {
 			return _text;
 		} else {
 			_text = value;
-			_label.textContent = _text;
+			_label.innerHTML = (_displayText || _text) + "\u25BC";
+			_boundingBox = undefined;
+		}
+	}
+
+	self.displayText = function(value) {
+		if(!arguments.length) {
+			return _displayText;
+		} else {
+			_displayText = value;
+			_label.innerHTML = (_displayText || _text) + "\u25BC";
 			_boundingBox = undefined;
 		}
 	}

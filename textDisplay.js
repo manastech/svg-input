@@ -200,7 +200,6 @@ function TextDisplay() {
 			blockElements.push(element);
 			block.appendChild(element.source());
 			if(_elementsWidth[element.text()] == undefined) {
-				if(element.type()=="pill")console.log("pill",element.text())
 				var boundingBox = element.draw();
 				_elementsWidth[element.text()] = boundingBox.width;
 				_lineHeight = _lineHeight || boundingBox.height;

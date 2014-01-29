@@ -1,5 +1,5 @@
 .svgInput {
-	width:100px;
+	width:200px;
 	height:100px;
 	background: #ffffff;
 	border: 1px #cccccc solid;
@@ -28,6 +28,12 @@
 
 .char-focus {
 	fill:#ffffff;
+}
+
+.opperator {
+	opacity: 0.66;
+	font-style: italic;
+	pointer-events: none;
 }
 
 .pill {
