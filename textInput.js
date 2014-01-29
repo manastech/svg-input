@@ -208,7 +208,7 @@ function TextInput(containerId) {
 
 	self.breakPill = function(id, replaceText) {
 		var pill = self.getPillById(id);
-		replaceText = replaceText || pill.text();
+		replaceText = replaceText || pill.label();
 		self.appendChar(replaceText, _elements.indexOf(pill), 1);
 	}
 
