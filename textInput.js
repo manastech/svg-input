@@ -43,12 +43,12 @@ function TextInput(containerId) {
 			_focus = value;
 			if(_focus) {
 				document.addEventListener("click", clickOutsideHandler);
-				_container.class = "svgInput svgInput-focus";
+				_container.className = "svgInput svgInput-focus";
 				_display.focus(true);
 				_keyTracker.activate();
 			} else {
 				document.removeEventListener("click", clickOutsideHandler);
-				_container.class =  "svgInput";
+				_container.className = "svgInput";
 				_display.focus(false);
 				_keyTracker.deactivate();
 			}

@@ -28,17 +28,19 @@
           input.addEventListener(Event.DROP, dropHandler);
           input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
           input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
+          input.focus(true);
+          input.render();
+          input.caret(Number.MAX_VALUE);
           createButton = document.getElementById("createButton");
           createButton.style.display = "none";
           createButton.addEventListener("click", input.createPill);
           updateButton = document.getElementById("updateButton");
           updateButton.addEventListener("click", function() {
             var pill = input.getPillById("116afaa1-89a5-c86c-e03d-83dd5fab97be");
-            pill.id(undefined);
             pill.label("this is a pill");
+            pill.text(undefined);
             pill.opperator("min");
             input.render();
-            pill.focus(true);
           });
           window.setInterval(function() {
             var data = input.data();
@@ -101,7 +103,6 @@
 
         function contextMenuHandler(e) {
           var contextMenu = document.body.appendChild(document.createElement("div"));
-          contextMenu.class = "char";
           contextMenu.style.position = "absolute";
           contextMenu.style.backgroundColor = "#cccccc";
           contextMenu.style.border = "1px solid #999999";
@@ -141,7 +142,7 @@
         <div id="data" class="char">...</div>
         <div id="input" class="svgInput"></div>
         <div>
-          <button id="updateButton" style="display:inline-block;">Update pill</button>
+          <button id="updateButton" style="display:inline-block;">Update pill 116afaa1-89a5-c86c-e03d-83dd5fab97be</button>
           <button id="createButton" style="display:inline-block;">Create pill</button>
         </div>
       </div>
