@@ -4,30 +4,30 @@ function Pill(id, text, opperator) {
 	var _x;
 	var _y;
 	var _id = "";
+	var _label = "";
 	var _text = "";
+	var _textHolder;
 	var _source;
-	var _text;
 	var _displayText;
 	var _opperator;
-	var _label;
 	var _background;
 	var _index;
 	var _focus;
 	var _boundingBox;
 
-	function init(id, text, displayText, opperator) {
+	function init(id, label, text, opperator) {
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "g");
 		_source.setAttribute("type", "pill");
 		_source.setAttribute("z-index", "1");
 		_background = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "rect"));
 		_background.setAttribute("rx", 3);
 		_background.setAttribute("ry", 3);
-		_label = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "text"));
-		_label.setAttribute("cursor", "move");
+		_textHolder = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "text"));
+		_textHolder.setAttribute("cursor", "move");
 		self.focus(false);
 		self.id(id);
+		self.label(label);
 		self.text(text);
-		self.displayText(displayText);
 		self.opperator(opperator);
 		self.move(0, 0);
 		self.index(0);
@@ -38,7 +38,7 @@ function Pill(id, text, opperator) {
 			return _focus;
 		} else {
 			_focus = value;
-			_label.setAttribute("class", "char" + (_focus? " char-focus" : ""));
+			_textHolder.setAttribute("class", "char" + (_focus? " char-focus" : ""));
 			_background.setAttribute("class", "pill" + (_focus? " pill-focus" : ""));
 		}
 	}
@@ -61,22 +61,20 @@ function Pill(id, text, opperator) {
 		}
 	}
 
-	self.text = function(value) {
+	self.label = function(value) {
 		if(!arguments.length) {
-			return _text;
+			return _label;
 		} else {
-			_text = value;
-			_label.innerHTML = (_displayText || _text) + "\u25BC";
+			_label = value;
 			_boundingBox = undefined;
 		}
 	}
 
-	self.displayText = function(value) {
+	self.text = function(value) {
 		if(!arguments.length) {
-			return _displayText;
+			return _text;
 		} else {
-			_displayText = value;
-			_label.innerHTML = (_displayText || _text) + "\u25BC";
+			_text = value || self.label();
 			_boundingBox = undefined;
 		}
 	}
@@ -94,7 +92,7 @@ function Pill(id, text, opperator) {
 			return _x;
 		} else {
 			_x = value;
-			_label.setAttribute("x", _x);
+			_textHolder.setAttribute("x", _x);
 			_background.setAttribute("x", _x);
 		}
 	}
@@ -104,7 +102,7 @@ function Pill(id, text, opperator) {
 			return _y;
 		} else {
 			_y = value;
-			_label.setAttribute("y", _y);
+			_textHolder.setAttribute("y", _y);
 			_background.setAttribute("y", _y);
 		}
 	}
@@ -112,9 +110,10 @@ function Pill(id, text, opperator) {
 	self.draw = function() {
 		if(_boundingBox == undefined) {
 			var padding = 2;
-			_boundingBox = _label.getBBox();
-			_label.setAttribute("transform", "translate(" + padding + ",0)");
-			_label.setAttribute("width", _boundingBox.width);
+			_textHolder.innerHTML = self.text() + "\u25BC";
+			_boundingBox = _textHolder.getBBox();
+			_textHolder.setAttribute("transform", "translate(" + padding + ",0)");
+			_textHolder.setAttribute("width", _boundingBox.width);
 			_boundingBox.width = _boundingBox.width + padding * 2;
 			_background.setAttribute("width", _boundingBox.width);
 			_background.setAttribute("height", _boundingBox.height);

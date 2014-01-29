@@ -95,7 +95,7 @@ function TextInput(containerId) {
 						data[data.lastIndex()] = data.lastElement() + element.text();
 						break;
 					case "pill":
-						data.push({id:element.id(), text:element.text(), displayText:element.displayText(), opperator:element.opperator()});
+						data.push({id:element.id(), label:element.label(), text:element.text(), opperator:element.opperator()});
 						break;
 				}
 			});
@@ -113,8 +113,8 @@ function TextInput(containerId) {
 						info += entry;
 						break;
 					case "object":
-						_elements.push(new Pill(entry.id, (entry.text || "").replace(/\s/g, "\u00A0"), (entry.displayText || "").replace(/\s/g, "\u00A0"), entry.opperator));
-						info += "(" + entry.text + ")";
+						_elements.push(new Pill(entry.id, (entry.label || "").replace(/\s/g, "\u00A0"), (entry.text || "").replace(/\s/g, "\u00A0"), entry.opperator));
+						info += "(" + (entry.text || entry.label) + ")";
 						break;
 				}
 			});

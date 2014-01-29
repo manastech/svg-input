@@ -27,7 +27,7 @@
           input.addEventListener(Event.DRAG, dragHandler);
           input.addEventListener(Event.DROP, dropHandler);
           input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
-          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide", opperator:undefined},"! new line"]);
+          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
           createButton = document.getElementById("createButton");
           createButton.style.display = "none";
           createButton.addEventListener("click", input.createPill);
@@ -35,7 +35,7 @@
           updateButton.addEventListener("click", function() {
             var pill = input.getPillById("116afaa1-89a5-c86c-e03d-83dd5fab97be");
             pill.id(undefined);
-            pill.text("this is a pill");
+            pill.label("this is a pill");
             pill.opperator("min");
             input.render();
             pill.focus(true);
@@ -49,7 +49,7 @@
                   string += entry;
                   break;
                 case "object":
-                  string += "(" + (entry.displayText || entry.text) + " [text:" + entry.text + ", id:" + entry.id + ", opperator:" + entry.opperator + "])"
+                  string += "(" + entry.text + " [label:" + entry.label + ", id:" + entry.id + ", opperator:" + entry.opperator + "])"
                   break;
               }
             });
@@ -126,7 +126,7 @@
             button.style.width = "100%";
             button.onclick = customHandler || function(e) {
               info.pill.opperator(option);
-              info.pill.displayText((option != undefined? "<tspan class='opperator'>" + option + " of </tspan>" : "") + info.pill.text());
+              info.pill.text((option != undefined? "<tspan class='opperator'>" + option + " of </tspan>" : "") + info.pill.label());
               menu.parentNode.removeChild(menu);
               input.render();
             }
