@@ -1,6 +1,7 @@
 function Pill(id, text, opperator) {
 
 	var self = this;
+	var _type;
 	var _x;
 	var _y;
 	var _id = "";
@@ -16,8 +17,9 @@ function Pill(id, text, opperator) {
 	var _boundingBox;
 
 	function init(id, label, text, opperator) {
+		_type = "pill";
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "g");
-		_source.setAttribute("type", "pill");
+		_source.setAttribute("type", _type);
 		_source.setAttribute("z-index", "1");
 		_background = _source.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "rect"));
 		_background.setAttribute("rx", 3);
@@ -136,7 +138,7 @@ function Pill(id, text, opperator) {
 	}
 
 	self.type = function() {
-		return "pill";
+		return _type;
 	}
 
 	self.toString = function() {

@@ -215,7 +215,16 @@ function TextInput(containerId) {
 	self.createPill = function() {
 		var label = "";
 		for (var index = _selection.start(); index < _selection.end(); index++) {
-			label += _elements[index].text();
+			var element = _elements[index];
+			switch(element.type()) {
+				case "pill":
+				console.log(element.label())
+					label += element.label();
+					break;
+				case "character":
+					label += element.text();
+					break;
+			}
 		}
 		if(self.GUIDgenerator != undefined) {
 			var id = self.GUIDgenerator();
@@ -267,15 +276,15 @@ function TextInput(containerId) {
 		var index = 0;
 		_elements.forEach(function(element) {
 			switch(element.type()) {
-				case "character":
-					string += element.toString();
-					break;
 				case "pill":
 					string += element.toString();
 					var offset = element.toString().length - 1;
 					caret += caret > index? offset : 0;
 					start += start > index? offset : 0;
 					end += end > index? offset : 0;
+					break;
+				case "character":
+					string += element.toString();
 					break;
 			}
 			index++;

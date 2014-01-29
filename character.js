@@ -1,6 +1,7 @@
 function Character(text) {
 
 	var self = this;
+	var _type;
 	var _x;
 	var _y;
 	var _text = "";
@@ -9,8 +10,9 @@ function Character(text) {
 	var _focus;
 
 	function init(text) {
+		_type = "character";
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		_source.setAttribute("type", "char");
+		_source.setAttribute("type", _type);
 		self.focus(false);
 		self.text(text);
 		self.move(0, 0);
@@ -90,7 +92,7 @@ function Character(text) {
 	}
 
 	self.type = function() {
-		return "character";
+		return _type;
 	}
 
 	init(text);
