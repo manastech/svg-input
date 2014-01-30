@@ -74,12 +74,12 @@ function TextDisplay() {
 		_IBeam.setAttribute("opacity", "1");
 	}
 
-	self.moveCaret = function (value) {
+	self.moveCaret = function (value, insertBefore) {
 		var x = 0;
 		var y = 0;
 		if(_elements.length) {
-			var element = _elements[Math.max(0, Math.min(_elements.lastIndex(), value))];
-			x = element.x() + (value == _elements.length? _elementsWidth[element.text()] : 0);
+			var element = _elements[Math.max(0, Math.min(_elements.lastIndex(), value - (insertBefore? 1 : 0)))];
+			x = element.x() + (value == _elements.length || insertBefore? _elementsWidth[element.text()] : 0);
 			y = element.y() - _fontSize;
 		}
 		_IBeam.setAttribute("x", x || 0);
@@ -119,7 +119,7 @@ function TextDisplay() {
 				var match = point.y > top && point.y <= bottom;
 				if (match) {
 					if(contour) {
-						element = _elements[(point.x < 0? line.firstChild.firstChild : line.lastChild.lastChild).getAttribute("data-index")];
+						element = _elements[(point.x < line.offsetLeft? line.firstChild.firstChild : line.lastChild.lastChild).getAttribute("data-index")];
 					} else {
 						element = elementByLine(line, point.x);
 					}

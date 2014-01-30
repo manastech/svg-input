@@ -1,9 +1,8 @@
-function KeyTracker(input, selection) {
+function KeyTracker(input) {
 
 	var self = this;
 	var _active = false;
 	var _input = input;
-	var _selection = selection;
 
 	self.activate = function() {
 		_active = true;
@@ -19,13 +18,13 @@ function KeyTracker(input, selection) {
 
 	function select(shift, from, to) {
 		if(shift) {
-			if(_selection.length()) {
-				_selection.set(_selection.from(), to);
+			if(_input.selection().length()) {
+				_input.selection().set(_input.selection().from(), to);
 			} else {
-				_selection.set(from, to);
+				_input.selection().set(from, to);
 			}
 		} else {
-			_selection.clear();
+			_input.selection().clear();
 		}
 	}
 
@@ -36,10 +35,10 @@ function KeyTracker(input, selection) {
 				return;
 				break;
 			default:
-				var start = _selection.length()? _selection.start() : _input.caret();
-				var length = _selection.length();
+				var start = _input.selection().length()? _input.selection().start() : _input.caret();
+				var length = _input.selection().length();
 				var char = String.fromCharCode(e.charCode);
-				_selection.clear();
+				_input.selection().clear();
 				_input.appendChar(char, start, length);
 				_input.caret(start + 1);
 				break;
@@ -60,9 +59,9 @@ function KeyTracker(input, selection) {
 				preventDefault = false;
 				return;
 			case 8://Backspace
-				if(caret || _selection.length()) {
-					start = _selection.length()? _selection.start() : caret - 1;
-					length = Math.max(1, _selection.length());
+				if(caret || _input.selection().length()) {
+					start = _input.selection().length()? _input.selection().start() : caret - 1;
+					length = Math.max(1, _input.selection().length());
 					caret = start;
 					select(false);
 					_input.appendChar(undefined, start, length);
@@ -115,8 +114,8 @@ function KeyTracker(input, selection) {
 				select(e.shiftKey, caret, _input.caret());
 				break;
 			case 46://Delete
-				start = _selection.length()? _selection.start() : caret;
-				length = Math.max(1, _selection.length());
+				start = _input.selection().length()? _input.selection().start() : caret;
+				length = Math.max(1, _input.selection().length());
 				caret = start;
 				select(false);
 				_input.appendChar(undefined, start, length);

@@ -5,6 +5,7 @@
       <link rel="stylesheet" type="text/css" href="style.css">
       <script type="text/javascript" src="tools.js"></script>
       <script type="text/javascript" src="prototypes.js"></script>
+      <script type="text/javascript" src="Clipboard.js"></script>
       <script type="text/javascript" src="invalidateElement.js"></script>
       <script type="text/javascript" src="eventDispatcher.js"></script>
       <script type="text/javascript" src="keyTracker.js"></script>
@@ -20,17 +21,6 @@
 
         function init() {
           input = new TextInput("input");
-          input.GUIDgenerator = guid;
-          input.autoExpand(true);
-          input.addEventListener(Event.CHANGE, changeHandler);
-          input.addEventListener(Event.SELECT, selectHandler);
-          input.addEventListener(Event.DRAG, dragHandler);
-          input.addEventListener(Event.DROP, dropHandler);
-          input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
-          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
-          input.focus(true);
-          input.render();
-          input.caret(Number.MAX_VALUE);
           createButton = document.getElementById("createButton");
           createButton.style.display = "none";
           createButton.addEventListener("click", input.createPill);
@@ -42,6 +32,19 @@
             pill.opperator("min");
             input.render();
           });
+          input.GUIDgenerator = guid;
+          input.autoExpand(true);
+          input.addEventListener(Event.CHANGE, changeHandler);
+          input.addEventListener(Event.SELECT, selectHandler);
+          input.addEventListener(Event.DRAG, dragHandler);
+          input.addEventListener(Event.DROP, dropHandler);
+          input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
+          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
+          input.focus(true);
+          input.render();
+          //input.caret(Number.MAX_VALUE);
+          input.caret(10);
+          input.selection().set(5, 10);
           window.setInterval(function() {
             var data = input.data();
             var string = "Data {";

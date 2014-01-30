@@ -9,6 +9,7 @@ function TextInput(containerId) {
 	var _display;
 	var _selection;
 	var _keyTracker;
+	var _clipboard;
 	var _caret = 0;
 	var _elements = [];
 	var _focus;
@@ -23,6 +24,7 @@ function TextInput(containerId) {
 		_selection = new Selection();
 		_selection.addEventListener(Event.SELECT, selectHandler);
 		_keyTracker = new KeyTracker(self, _selection);
+		_clipboard = new Clipboard(self, _selection);
 		_display = new TextDisplay();
 		_container = document.getElementById(containerId);
 		_container.addEventListener("mousedown", mouseHandler);
@@ -46,11 +48,13 @@ function TextInput(containerId) {
 				_container.className = "svgInput svgInput-focus";
 				_display.focus(true);
 				_keyTracker.activate();
+				_clipboard.activate();
 			} else {
 				document.removeEventListener("click", clickOutsideHandler);
 				_container.className = "svgInput";
 				_display.focus(false);
 				_keyTracker.deactivate();
+				_clipboard.deactivate();
 			}
 		}
 	}
@@ -118,7 +122,7 @@ function TextInput(containerId) {
 						break;
 				}
 			});
-			self.caret(_elements.length);
+			self.caret(Number.MAX_VALUE, false);
 			_selection.limit(_elements.length);
 			self.invalidate();
 			self.dispatchEvent(new Event(Event.CHANGE, info));
@@ -140,12 +144,12 @@ function TextInput(containerId) {
 		self.dispatchEvent(new Event(Event.CHANGE, string));
 	}
 
-	self.caret = function(value) {
+	self.caret = function(value, insertBefore) {
 		if(!arguments.length) {
 			return _caret;
 		} else {
 			_caret = Math.max(0, Math.min(_elements.length, value));
-			_display.moveCaret(_caret);
+			_display.moveCaret(_caret, insertBefore);
 			var position = _display.caretPosition();
 			if(_container.scrollLeft > position.x) {
 				_container.scrollLeft = position.x;
@@ -161,10 +165,15 @@ function TextInput(containerId) {
 		}
 	}
 
+	self.selection = function() {
+		return _selection;
+	}
+
 	self.jump = function(value) {
 		var point = _display.caretPosition();
 		point.y += value * _display.lineHeight();
-		self.caret(_display.nearestPosition(point, false).index);
+		var nearestPosition = _display.nearestPosition(point, false);
+		self.caret(nearestPosition.index, nearestPosition.insertBefore);
 	}
 
 	self.prevBoundary = function(value) {
@@ -218,7 +227,6 @@ function TextInput(containerId) {
 			var element = _elements[index];
 			switch(element.type()) {
 				case "pill":
-				console.log(element.label())
 					label += element.label();
 					break;
 				case "character":
@@ -256,9 +264,9 @@ function TextInput(containerId) {
 		}
 		if(!overflowX) _container.scrollLeft = 0;
 		if(!overflowY) _container.scrollTop = 0;
-		_wrapper.style.padding = _margin + "px";
-		_wrapper.style.width = _display.width() + "px";
-		_wrapper.style.height = _display.height() + "px";
+		_wrapper.style.padding = _margin + "px 0px 0px " + _margin + "px";
+		_wrapper.style.width = (_display.width() + _margin) + "px";
+		_wrapper.style.height = (_display.height() + _margin) + "px";
 		_container.style.overflowX = overflowX? "scroll" : "hidden";
 		_container.style.overflowY = overflowY && !_autoExpand? "scroll" : "hidden";
 		if(_autoExpand) {
@@ -312,10 +320,8 @@ function TextInput(containerId) {
 		}
 		if(e.target == _container || e.button) return;
 		var mouse = mousePosition(e);
-		mouse.x -= _container.offsetLeft;
-		mouse.y -= _container.offsetTop;
-		mouse.x += _container.scrollLeft;
-		mouse.y += _container.scrollTop;
+		mouse.x -= _container.offsetLeft - _container.scrollLeft + _margin;
+		mouse.y -= _container.offsetTop - _container.scrollTop + _margin;
 		switch(e.type) {
 			case "mousedown":
 				window.addEventListener("mousemove", mouseHandler);
@@ -350,7 +356,7 @@ function TextInput(containerId) {
 				} else {
 					_selection.clear();
 				}
-				self.caret(caret);
+				self.caret(caret, insertBefore);
 				if(e.target.parentNode.getAttribute("type") == "pill") {
 					_dragTarget = e.target.parentNode;
 					var bounds = _dragTarget.getBBox();
@@ -375,25 +381,25 @@ function TextInput(containerId) {
 				if(_dragTarget == undefined) {
 					_selection.set(_caret, caret);
 				} else {
-					self.caret(caret);
+					self.caret(caret, insertBefore);
 				}
 				break;
 			case "mouseup":
-				self.caret(caret);
+				self.caret(caret, insertBefore);
 				if(_dragTarget != undefined) {
 					var index = Number(_dragTarget.getAttribute("data-index"));
 					if(0 <= mouse.x && mouse.x <= self.width() && 0 <= mouse.y && mouse.y <= self.height()) {
 						var element = _elements[index];
 						_elements.splice(index, 1);
 						if(_caret > index) {
-							self.caret(_caret - 1);
+							self.caret(_caret - 1, insertBefore);
 						}
 						_elements.splice(_caret, 0, element);
 						index = _caret;
 					}
 					_dragTarget = undefined;
 					self.render();
-					self.caret(index + 1);
+					self.caret(index + 1, insertBefore);
 					document.body.style.cursor = "auto";
 					self.dispatchEvent(new Event(Event.DROP));
 				}
