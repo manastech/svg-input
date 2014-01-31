@@ -36,17 +36,17 @@ function KeyTracker(input) {
 				break;
 			default:
 				var start = _input.selection().length()? _input.selection().start() : _input.caret();
-				var length = _input.selection().length();
+				var remove = _input.selection().length();
 				var char = String.fromCharCode(e.charCode);
 				_input.selection().clear();
-				_input.appendChar(char, start, length);
-				_input.caret(start + 1);
+				_input.append(start, remove, char);
+				_input.caret(start + 1, true);
 				break;
 		}
 	}
 
 	function keyDownHandler(e) {
-		var start, length;
+		var start, remove;
 		var caret = _input.caret();
 		var preventDefault = true;
 		switch(e.keyCode) {
@@ -61,10 +61,10 @@ function KeyTracker(input) {
 			case 8://Backspace
 				if(caret || _input.selection().length()) {
 					start = _input.selection().length()? _input.selection().start() : caret - 1;
-					length = Math.max(1, _input.selection().length());
+					remove = Math.max(1, _input.selection().length());
 					caret = start;
 					select(false);
-					_input.appendChar(undefined, start, length);
+					_input.append(start, remove);
 					_input.caret(caret);
 				}
 				break;
@@ -115,10 +115,10 @@ function KeyTracker(input) {
 				break;
 			case 46://Delete
 				start = _input.selection().length()? _input.selection().start() : caret;
-				length = Math.max(1, _input.selection().length());
+				remove = Math.max(1, _input.selection().length());
 				caret = start;
 				select(false);
-				_input.appendChar(undefined, start, length);
+				_input.append(start, remove);
 				_input.caret(caret);
 				break;
 			default:

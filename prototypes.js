@@ -1,7 +1,7 @@
 String.prototype.scan = function (regex) {
 	if (!regex.global) throw "Scan Error";
-		var self = this;
-		var match, occurrences = [];
+	var self = this;
+	var match, occurrences = [];
 	while (match = regex.exec(self)) {
 		match.shift();
 		occurrences.push(match[0]);

@@ -13,6 +13,7 @@ function TextInput(containerId) {
 	var _caret = 0;
 	var _elements = [];
 	var _focus;
+	var _plumb;
 	var _margin;
 	var _autoExpand;
 	var _minHeight;
@@ -129,22 +130,38 @@ function TextInput(containerId) {
 		}
 	}
 
-	self.appendChar = function(string, start, remove) {
+	self.append = function(start, remove, text) {
 		_elements.splice(start, remove);
-		if(string != undefined) {
-			var chars = string.split("");
-			chars.forEach(function(char) {
-				var character = new Character(char.replace(/\s/g, "\u00A0"));
-				_elements.splice(start, 0, character);
-				start++;
+		if(text != undefined) {
+			var insert = [];
+			text = text.split("");
+			text.forEach(function(entry) {
+				insert.push(new Character(entry.replace(/\s/g, "\u00A0")));
 			});
+			_elements.splice.apply(_elements, [start, 0].concat(insert));
 		}
 		_selection.limit(_elements.length);
-		self.render();
-		self.dispatchEvent(new Event(Event.CHANGE, string));
+		self.render(start);
+		self.dispatchEvent(new Event(Event.CHANGE, text));
 	}
 
-	self.caret = function(value, insertBefore) {
+	self.get = function(from, to) {
+		var string = "";
+		for(var index = from; index < to && index < _elements.length; index++) {
+			var element = _elements[index];
+			switch(element.type()) {
+				case "pill":
+					string += element.label();
+					break;
+				case "character":
+					string += element.text();
+					break;
+			}
+		}
+		return string;
+	}
+
+	self.caret = function(value, insertBefore, persistPlumb) {
 		if(!arguments.length) {
 			return _caret;
 		} else {
@@ -161,6 +178,9 @@ function TextInput(containerId) {
 			} else if(_container.scrollTop + _container.clientHeight - _margin * 2 < position.y) {
 				_container.scrollTop = position.y + _margin * 2 - _container.clientHeight;
 			}
+			if(!persistPlumb) {
+				_plumb = undefined;
+			}
 			if(self.debug()) console.log(self.toString());
 		}
 	}
@@ -171,9 +191,11 @@ function TextInput(containerId) {
 
 	self.jump = function(value) {
 		var point = _display.caretPosition();
+		_plumb = _plumb || point.x;
+		point.x = _plumb;
 		point.y += value * _display.lineHeight();
 		var nearestPosition = _display.nearestPosition(point, false);
-		self.caret(nearestPosition.index, nearestPosition.insertBefore);
+		self.caret(nearestPosition.index, nearestPosition.insertBefore, true);
 	}
 
 	self.prevBoundary = function(value) {
@@ -215,10 +237,9 @@ function TextInput(containerId) {
 		return pill;
 	}
 
-	self.breakPill = function(id, replaceText) {
-		var pill = self.getPillById(id);
+	self.breakPill = function(pill, replaceText) {
 		replaceText = replaceText || pill.label();
-		self.appendChar(replaceText, _elements.indexOf(pill), 1);
+		self.append(_elements.indexOf(pill), 1, replaceText);
 	}
 
 	self.createPill = function() {
@@ -242,11 +263,11 @@ function TextInput(containerId) {
 		self.invalidate();
 	}
 
-	self.render = function() {
+	self.render = function(start) {
 		var innerWidth = self.width() - _margin * 2;
 		var innerHeight = self.height() - _margin * 2;
 		_minHeight = _minHeight || self.height();
-		_display.render(_elements, innerWidth, innerHeight);
+		_display.render(_elements, innerWidth, innerHeight, start);
 		var overflowX = _elements.length && _display.width() > innerWidth;
 		var overflowY = _elements.length && _display.height() > innerHeight && !_autoExpand;
 		if(overflowX) {
@@ -255,7 +276,7 @@ function TextInput(containerId) {
 		var width = overflowY? _container.clientWidth - _margin * 2 : innerWidth;
 		var height = overflowX? _container.clientHeight - _margin * 2 : innerHeight;
 		if(overflowX || overflowY) {
-			_display.render(_elements, width, height);
+			_display.render(_elements, width, height, start);
 		}
 		if(_selection.length()) {
 			_display.drawSelection(_selection.start(), _selection.end());
@@ -340,7 +361,7 @@ function TextInput(containerId) {
 			caret = Number(index) + (mouse.x > (element.x() + element.source().getBBox().width / 2)? 1 : 0);
 			insertBefore = element.source().parentNode.nextSibling == undefined;
 		} else {
-			var contour = _dragTarget == undefined;
+			var contour = _dragTarget == undefined && e.type != "mousemove";
 			var nearestPosition = _display.nearestPosition(mouse, contour);
 			caret = nearestPosition.index;
 			insertBefore = nearestPosition.insertBefore;
@@ -395,10 +416,10 @@ function TextInput(containerId) {
 							self.caret(_caret - 1, insertBefore);
 						}
 						_elements.splice(_caret, 0, element);
+						self.render(index);
 						index = _caret;
 					}
 					_dragTarget = undefined;
-					self.render();
 					self.caret(index + 1, insertBefore);
 					document.body.style.cursor = "auto";
 					self.dispatchEvent(new Event(Event.DROP));

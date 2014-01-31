@@ -117,7 +117,7 @@
           addOption("Average", "average", contextMenu, e.info);
           addOption("None", undefined, contextMenu, e.info);
           addOption("Break", undefined, contextMenu, e.info, function() {
-            input.breakPill(e.info.pill.id());
+            input.breakPill(e.info.pill);
             contextMenu.parentNode.removeChild(contextMenu);
             input.render();
           });

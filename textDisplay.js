@@ -16,7 +16,6 @@ function TextDisplay() {
 	var _IBeam;
 	var _IBeamInterval;
 	var _focus;
-	var _lines;
 	var _elements = [];
 	var _elementsWidth = [];
 
@@ -119,7 +118,7 @@ function TextDisplay() {
 				var match = point.y > top && point.y <= bottom;
 				if (match) {
 					if(contour) {
-						element = _elements[(point.x < line.offsetLeft? line.firstChild.firstChild : line.lastChild.lastChild).getAttribute("data-index")];
+						element = _elements[(point.x <= line.offsetLeft? line.firstChild.firstChild : line.lastChild.lastChild).getAttribute("data-index")];
 					} else {
 						element = elementByLine(line, point.x);
 					}
@@ -156,29 +155,41 @@ function TextDisplay() {
 		return _fontSize;
 	}
 
-	self.render = function(elements, width, height) {
+	self.render = function(elements, width, height, start) {
+		//calculate width with previous lines & max(width)
+		//if newwidth > _width render(0) 
 		if(!arguments.length) {
 			elements = _elements;
 			width = _width;
 			height = _height;
 		}
-		_computedWidth = 0;
-		while (_textFlow.firstChild) {
-		    _textFlow.removeChild(_textFlow.firstChild);
-		}
-		var line, block, blockElements, lastElement;
-		var breakable = false;
-		var x = 0;
-		var y = 0;
-		var index = 0;
-		_lines = [];
+		start = start || 0;
 		_elements = elements.concat(new Character("\u200B")) || [new Character("\u00A0")];
-		_elements.forEach(function (element) {
+		var line, block, blockElements, element, lastElement, index, length, breakable, x, y;
+		clear(start);
+		console.log("remain "+_textFlow.childElementCount+" lines")
+		_computedWidth = 0;
+		length = _textFlow.childElementCount;
+		for (index = 0; index < length; index++) {
+			line = _textFlow.childNodes[index];
+			lastElement = _elements[Number(line.lastChild.lastChild.getAttribute("data-index"))];
+			_computedWidth = Math.max(_computedWidth, lastElement.x() + _elementsWidth[lastElement.text()]);
+		}
+		start = lastElement? lastElement.index() + 1 : 0;
+		length = _elements.length;
+		lastElement = undefined;
+		line = undefined;
+
+var count = 0
+
+		for(index = start; index < length; index++, count++) {
+			element = _elements[index];
 			var boundary = block == undefined || element.text().match(/\s/) || lastElement.type() == "pill" || lastElement.text().match(/\s/);
 			var overflow = x > width;
 			breakable = breakable || (lastElement != undefined? lastElement.type() != "pill" && lastElement.text().match(/\s/) != null : false);
 			if(line == undefined || (overflow && breakable)) {
-				y = line == undefined? _fontSize : y + _lineHeight;
+				console.log("new line", element.text(), line == undefined , x, width , breakable)
+				y = _fontSize + _lineHeight * _textFlow.childElementCount;
 				breakable = false;
 				line = _textFlow.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "g"));
 				line.setAttribute("data-index", _textFlow.childElementCount - 1);
@@ -209,16 +220,28 @@ function TextDisplay() {
 			element.move(x, y);
 			element.index(index);
 			x += _elementsWidth[element.text()];
-			index++;
 			if(lastElement != undefined && (lastElement.type() == "pill" || !lastElement.text().match(/\s/))) {
 				_computedWidth = Math.max(_computedWidth, lastElement.x() + _elementsWidth[lastElement.text()]);
 			}
 			lastElement = element;
-		});
+		};
 		_computedWidth = Math.max(x, _computedWidth);
 		_width = Math.max(_computedWidth, width);
 		_computedHeight = y;
 		_height = Math.max(_computedHeight, height);
+		console.log((count-1) + " rendered element", start, length)
+	}
+
+	function clear(element) {
+		element = Math.max(element - 1, 0);
+		var start = 0;
+		if(_elements[element].source().parentNode) {
+			start = Number(_elements[element].source().parentNode.parentNode.getAttribute("data-index"));
+		}
+		for (index = _textFlow.childElementCount - 1; index >= start; index--) {
+			var line = _textFlow.childNodes[index];
+			_textFlow.removeChild(line);
+		}
 	}
 
 	function selectionPath(start, end) {
