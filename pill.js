@@ -15,6 +15,7 @@ function Pill(id, text, opperator) {
 	var _index;
 	var _focus;
 	var _boundingBox;
+	var _displayHiddenCharacters;
 
 	function init(id, label, text, opperator) {
 		_type = "pill";
@@ -33,6 +34,14 @@ function Pill(id, text, opperator) {
 		self.opperator(opperator);
 		self.move(0, 0);
 		self.index(0);
+	}
+
+	self.displayHiddenCharacters = function(value) {
+		if(!arguments.length) {
+			return _displayHiddenCharacters;
+		} else {
+			_displayHiddenCharacters = value;
+		}
 	}
 
 	self.focus = function(value) {
@@ -112,7 +121,11 @@ function Pill(id, text, opperator) {
 	self.draw = function() {
 		if(_boundingBox == undefined) {
 			var padding = 2;
-			_textHolder.innerHTML = self.text() + "\u25BC";
+			var text = self.text();
+			if(self.displayHiddenCharacters()) {
+				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.BULLET);
+			}
+			_textHolder.innerHTML = text + TextDisplay.ARROW_DOWN;
 			_boundingBox = _textHolder.getBBox();
 			_textHolder.setAttribute("transform", "translate(" + padding + ",0)");
 			_textHolder.setAttribute("width", _boundingBox.width);

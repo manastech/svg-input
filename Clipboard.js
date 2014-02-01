@@ -46,6 +46,16 @@ function Clipboard(input) {
 					_clipboardContainer.appendChild(_clipboard);
 					_clipboard.focus();
 					break;
+				case 88://X
+					if(_input.selection().length()) {
+						_clipboard.value = _input.get(_input.selection().start(), _input.selection().end());
+						_clipboard.focus();
+						_clipboard.select();
+						_input.append(_input.selection().start(), _input.selection().length());
+						_input.caret(_input.caret());
+					}
+					break
+					break;
 			}
 		}
 	}
@@ -57,11 +67,12 @@ function Clipboard(input) {
 					var start = _input.selection().length()? _input.selection().start() : _input.caret();
 					var remove = _input.selection().length();
 					_input.append(start, remove, _clipboard.value);
-					_input.caret(start + _clipboard.value.length)
+					_input.caret(start + _clipboard.value.length);
 					_input.selection().clear();
 					break;
 			}
 			_clipboard.value = "";
+			_clipboard.blur();
 			_clipboardContainer.style.display = "none";
 			document.body.removeChild(_clipboardContainer);
 		}

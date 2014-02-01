@@ -39,7 +39,8 @@
           input.addEventListener(Event.DRAG, dragHandler);
           input.addEventListener(Event.DROP, dropHandler);
           input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
-          input.data(["Hola mundo ", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
+          input.displayHiddenCharacters(true);
+          input.data(["Hola mundo\r", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
           input.focus(true);
           input.render();
           //input.caret(Number.MAX_VALUE);
@@ -147,7 +148,7 @@
     </head>
     <body>
       <div style="margin-top:50px;margin-left:50px;">
-        <div id="data" class="char">...</div>
+        <div id="data" class="char" style="white-space:pre-wrap">...</div>
         <div id="input" class="svgInput"></div>
         <div>
           <button id="updateButton" style="display:inline-block;">Update pill 116afaa1-89a5-c86c-e03d-83dd5fab97be</button>

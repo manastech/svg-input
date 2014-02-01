@@ -31,16 +31,13 @@ function KeyTracker(input) {
 	function keyPressHandler(e) {
 		e.preventDefault();
 		switch(e.charCode) {
-			case 13://Enter
-				return;
-				break;
 			default:
 				var start = _input.selection().length()? _input.selection().start() : _input.caret();
 				var remove = _input.selection().length();
 				var char = String.fromCharCode(e.charCode);
 				_input.selection().clear();
 				_input.append(start, remove, char);
-				_input.caret(start + 1, true);
+				_input.caret(start + 1, e.charCode != 13);
 				break;
 		}
 	}
@@ -50,14 +47,6 @@ function KeyTracker(input) {
 		var caret = _input.caret();
 		var preventDefault = true;
 		switch(e.keyCode) {
-			case 13://Enter
-			case 16://Shift
-			case 17://Control
-			case 18://Alt
-			case 33://Page up
-			case 34://Page down
-				preventDefault = false;
-				return;
 			case 8://Backspace
 				if(caret || _input.selection().length()) {
 					start = _input.selection().length()? _input.selection().start() : caret - 1;

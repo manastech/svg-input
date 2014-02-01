@@ -8,6 +8,7 @@ function Character(text) {
 	var _source;
 	var _index;
 	var _focus;
+	var _displayHiddenCharacters;
 
 	function init(text) {
 		_type = "character";
@@ -17,6 +18,15 @@ function Character(text) {
 		self.text(text);
 		self.move(0, 0);
 		self.index(0);
+	}
+
+	self.displayHiddenCharacters = function(value) {
+		if(!arguments.length) {
+			return _displayHiddenCharacters;
+		} else {
+			_displayHiddenCharacters = value;
+			self.text(self.text());
+		}
 	}
 
 	self.focus = function(value) {
@@ -42,7 +52,11 @@ function Character(text) {
 			return _text;
 		} else {
 			_text = value;
-			_source.textContent = _text;
+			var text = _text;
+			if(self.displayHiddenCharacters()) {
+				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.BULLET);
+			}
+			_source.textContent = text;
 		}
 	}
 

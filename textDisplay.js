@@ -20,6 +20,7 @@ function TextDisplay() {
 	var _elementsWidth = [];
 
 	function init() {
+		_elementsWidth = []
 		_fontSize = fontSize("char");
 		_lineHeight = _fontSize * 1.2;
 		_svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
@@ -156,18 +157,15 @@ function TextDisplay() {
 	}
 
 	self.render = function(elements, width, height, start) {
-		//calculate width with previous lines & max(width)
-		//if newwidth > _width render(0) 
 		if(!arguments.length) {
 			elements = _elements;
 			width = _width;
 			height = _height;
 		}
 		start = start || 0;
-		_elements = elements.concat(new Character("\u200B")) || [new Character("\u00A0")];
+		_elements = elements.concat(new Character(TextDisplay.ZWSP));
 		var line, block, blockElements, element, lastElement, index, length, breakable, x, y;
 		clear(start);
-		console.log("remain "+_textFlow.childElementCount+" lines")
 		_computedWidth = 0;
 		length = _textFlow.childElementCount;
 		for (index = 0; index < length; index++) {
@@ -179,21 +177,18 @@ function TextDisplay() {
 		length = _elements.length;
 		lastElement = undefined;
 		line = undefined;
-
-var count = 0
-
-		for(index = start; index < length; index++, count++) {
+		for(index = start; index < length; index++) {
 			element = _elements[index];
 			var boundary = block == undefined || element.text().match(/\s/) || lastElement.type() == "pill" || lastElement.text().match(/\s/);
 			var overflow = x > width;
+			var carriageReturn = lastElement != undefined? lastElement.text() == TextDisplay.RETURN : false;
 			breakable = breakable || (lastElement != undefined? lastElement.type() != "pill" && lastElement.text().match(/\s/) != null : false);
-			if(line == undefined || (overflow && breakable)) {
-				console.log("new line", element.text(), line == undefined , x, width , breakable)
+			if(line == undefined || carriageReturn || (overflow && breakable)) {
 				y = _fontSize + _lineHeight * _textFlow.childElementCount;
 				breakable = false;
 				line = _textFlow.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "g"));
 				line.setAttribute("data-index", _textFlow.childElementCount - 1);
-				if(blockElements) {
+				if(blockElements && !carriageReturn) {
 					var offsetX = blockElements.firstElement().x();
 					blockElements.forEach(function(blockElement) {
 						blockElement.offset(-offsetX, _lineHeight);
@@ -229,7 +224,6 @@ var count = 0
 		_width = Math.max(_computedWidth, width);
 		_computedHeight = y;
 		_height = Math.max(_computedHeight, height);
-		console.log((count-1) + " rendered element", start, length)
 	}
 
 	function clear(element) {
@@ -300,3 +294,9 @@ var count = 0
 
 	init();
 }
+TextDisplay.RETURN = "\u000D";
+TextDisplay.ZWSP = "\u200B";
+TextDisplay.NBSP = "\u00A0";
+TextDisplay.PILCROW = "\u00B6";
+TextDisplay.BULLET = "\u2022";
+TextDisplay.ARROW_DOWN = "\u25BC";

@@ -19,6 +19,7 @@ function TextInput(containerId) {
 	var _minHeight;
 	var _scrollHeight = 0;
 	var _dragTarget;
+	var _displayHiddenCharacters;
 	var _debug;
 
 	function init(containerId) {
@@ -37,6 +38,7 @@ function TextInput(containerId) {
 		_wrapper.appendChild(_display.source());
 		self.invalidate();
 		self.margin(5);
+		self.displayHiddenCharacters(false);
 	}
 
 	self.focus = function(value) {
@@ -78,6 +80,15 @@ function TextInput(containerId) {
 		}
 	}
 
+	self.displayHiddenCharacters = function(value) {
+		if(!arguments.length) {
+			return _displayHiddenCharacters;
+		} else {
+			_displayHiddenCharacters = value;
+			self.invalidate();
+		}
+	}
+
 	self.width = function() {
 		var style = window.getComputedStyle(_container);
 		return Number(style.getPropertyValue("width").match(/\d+/));
@@ -108,18 +119,18 @@ function TextInput(containerId) {
 		} else {
 			_elements = [];
 			var info = "";
-			value.forEach(function(entry) {
-				switch(typeof entry) {
+			value.forEach(function(block) {
+				switch(typeof block) {
 					case "string":
-						var chars = entry.replace(/\s/g, "\u00A0").split("");
-						chars.forEach(function(char) {
-							_elements.push(new Character(char));
+						var text = parse(block);
+						text.forEach(function(entry) {
+							_elements.push(new Character(entry));
 						});
-						info += entry;
+						info += block;
 						break;
 					case "object":
-						_elements.push(new Pill(entry.id, (entry.label || "").replace(/\s/g, "\u00A0"), (entry.text || "").replace(/\s/g, "\u00A0"), entry.opperator));
-						info += "(" + (entry.text || entry.label) + ")";
+						_elements.push(new Pill(block.id, (block.label || "").replace(/\s/g, TextDisplay.NBSP), (block.text || "").replace(/\s/g, TextDisplay.NBSP), block.opperator));
+						info += "(" + (block.text || block.label) + ")";
 						break;
 				}
 			});
@@ -134,9 +145,9 @@ function TextInput(containerId) {
 		_elements.splice(start, remove);
 		if(text != undefined) {
 			var insert = [];
-			text = text.split("");
+			text = parse(text);
 			text.forEach(function(entry) {
-				insert.push(new Character(entry.replace(/\s/g, "\u00A0")));
+				insert.push(new Character(entry));
 			});
 			_elements.splice.apply(_elements, [start, 0].concat(insert));
 		}
@@ -266,6 +277,9 @@ function TextInput(containerId) {
 	self.render = function(start) {
 		var innerWidth = self.width() - _margin * 2;
 		var innerHeight = self.height() - _margin * 2;
+		_elements.forEach(function(element) {
+			element.displayHiddenCharacters(self.displayHiddenCharacters());
+		});
 		_minHeight = _minHeight || self.height();
 		_display.render(_elements, innerWidth, innerHeight, start);
 		var overflowX = _elements.length && _display.width() > innerWidth;
@@ -333,6 +347,11 @@ function TextInput(containerId) {
 			_debug = value;
 			console.log(self.toString());
 		}
+	}
+
+	function parse(string) {
+		return string.replace(/\r\n|\r|\n/g, TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.NBSP).split("");
+		//return string.replace(/[^\S\r]/g, TextDisplay.NBSP).split("");
 	}
 
 	function mouseHandler(e) {
@@ -432,7 +451,7 @@ function TextInput(containerId) {
 		if(e.target.getAttribute("data-index")) {
 			var firstNode = e.target.parentNode.firstChild;
 			var lastNode = e.target.parentNode.lastChild;
-			if(firstNode.textContent.match("\u00A0")) {
+			if(firstNode.textContent.match(TextDisplay.NBSP)) {
 				if(firstNode.parentNode.previousSibling) {
 					firstNode = firstNode.parentNode.previousSibling.firstChild;
 				}
