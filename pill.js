@@ -123,7 +123,7 @@ function Pill(id, text, opperator) {
 			var padding = 2;
 			var text = self.text();
 			if(self.displayHiddenCharacters()) {
-				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.BULLET);
+				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r](?![^<>]*>)/g, TextDisplay.BULLET);
 			}
 			_textHolder.innerHTML = text + TextDisplay.ARROW_DOWN;
 			_boundingBox = _textHolder.getBBox();

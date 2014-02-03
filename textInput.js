@@ -351,7 +351,6 @@ function TextInput(containerId) {
 
 	function parse(string) {
 		return string.replace(/\r\n|\r|\n/g, TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.NBSP).split("");
-		//return string.replace(/[^\S\r]/g, TextDisplay.NBSP).split("");
 	}
 
 	function mouseHandler(e) {
@@ -366,37 +365,6 @@ function TextInput(containerId) {
 			case "mousedown":
 				window.addEventListener("mousemove", mouseHandler);
 				window.addEventListener("mouseup", mouseHandler);
-				break;
-			case "mouseup":
-				window.removeEventListener("mousemove", mouseHandler);
-				window.removeEventListener("mouseup", mouseHandler);
-				break;
-		}
-		var caret;
-		var insertBefore = false;
-		var index = e.target.getAttribute("data-index");
-		if(index) {
-			var element = _elements[index];
-			caret = Number(index) + (mouse.x > (element.x() + element.source().getBBox().width / 2)? 1 : 0);
-			insertBefore = element.source().parentNode.nextSibling == undefined;
-		} else {
-			var contour = _dragTarget == undefined && e.type != "mousemove";
-			var nearestPosition = _display.nearestPosition(mouse, contour);
-			caret = nearestPosition.index;
-			insertBefore = nearestPosition.insertBefore;
-		}
-		switch(e.type) {
-			case "mousedown":
-				if(e.shiftKey) {
-					if(_selection.length()) {
-						_selection.set(_selection.from(), caret);
-					} else {
-						_selection.set(_caret, caret);
-					}
-				} else {
-					_selection.clear();
-				}
-				self.caret(caret, insertBefore);
 				if(e.target.parentNode.getAttribute("type") == "pill") {
 					_dragTarget = e.target.parentNode;
 					var bounds = _dragTarget.getBBox();
@@ -416,6 +384,37 @@ function TextInput(containerId) {
 					document.body.style.cursor = "move";
 					self.dispatchEvent(new Event(Event.DRAG, {pill:pill, mouseX:mouse.x + _container.offsetLeft - _container.scrollLeft, mouseY:mouse.y + _container.offsetTop - _container.scrollTop}));
 				}
+				break;
+			case "mouseup":
+				window.removeEventListener("mousemove", mouseHandler);
+				window.removeEventListener("mouseup", mouseHandler);
+				break;
+		}
+		var caret;
+		var insertBefore = false;
+		var index = e.target.getAttribute("data-index");
+		if(index) {
+			var element = _elements[index];
+			caret = Number(index) + (mouse.x > (element.x() + element.source().getBBox().width / 2)? 1 : 0);
+			insertBefore = element.source().parentNode.nextSibling == undefined;
+		} else {
+			var contour = _dragTarget == undefined;
+			var nearestPosition = _display.nearestPosition(mouse, contour);
+			caret = nearestPosition.index;
+			insertBefore = nearestPosition.insertBefore;
+		}
+		switch(e.type) {
+			case "mousedown":
+				if(e.shiftKey) {
+					if(_selection.length()) {
+						_selection.set(_selection.from(), caret);
+					} else {
+						_selection.set(_caret, caret);
+					}
+				} else {
+					_selection.clear();
+				}
+				self.caret(caret, insertBefore);
 				break;
 			case "mousemove":
 				if(_dragTarget == undefined) {

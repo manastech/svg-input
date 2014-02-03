@@ -54,7 +54,7 @@ function Character(text) {
 			_text = value;
 			var text = _text;
 			if(self.displayHiddenCharacters()) {
-				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.BULLET);
+				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r](?![^<>]*>)/g, TextDisplay.BULLET);
 			}
 			_source.textContent = text;
 		}
