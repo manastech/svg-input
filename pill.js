@@ -85,7 +85,7 @@ function Pill(id, text, opperator) {
 		if(!arguments.length) {
 			return _text;
 		} else {
-			_text = value || self.label();
+			_text = value;
 			_boundingBox = undefined;
 		}
 	}
@@ -121,12 +121,21 @@ function Pill(id, text, opperator) {
 	self.draw = function() {
 		if(_boundingBox == undefined) {
 			var padding = 2;
-			var text = self.text();
+			var text;
+			if(self.label() != undefined) {
+				text = self.l
+			} else {
+				text = self.text();
+			}
+			 = self.text();
 			if(self.displayHiddenCharacters()) {
 				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r](?![^<>]*>)/g, TextDisplay.BULLET);
 			}
-			_textHolder.innerHTML = text + TextDisplay.ARROW_DOWN;
-			_boundingBox = _textHolder.getBBox();
+			_textHolder.textContent = text + TextDisplay.ARROW_DOWN;
+			_boundingBox = {};
+			var temp = _textHolder.getBBox();
+			for (var prop in temp) _boundingBox[prop] = temp[prop];
+			for (var prop in _boundingBox)	console.log(prop, _boundingBox[prop])
 			_textHolder.setAttribute("transform", "translate(" + padding + ",0)");
 			_textHolder.setAttribute("width", _boundingBox.width);
 			_boundingBox.width = _boundingBox.width + padding * 2;

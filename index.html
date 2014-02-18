@@ -39,7 +39,7 @@
           input.addEventListener(Event.DRAG, dragHandler);
           input.addEventListener(Event.DROP, dropHandler);
           input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
-          input.displayHiddenCharacters(true);
+          //input.displayHiddenCharacters(true);
           input.data(["Hola mundo\r", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
           input.focus(true);
           input.render();
@@ -136,7 +136,12 @@
             button.style.width = "100%";
             button.onclick = customHandler || function(e) {
               info.pill.opperator(option);
-              info.pill.text((option != undefined? "<tspan class='opperator'>" + option + " of </tspan>" : "") + info.pill.label());
+              var label = [];
+              if(option != undefined) {
+                label.push({type:"opperator", text:"option"});
+              }
+              text.push(info.pill.label());
+              info.pill.label(text);
               menu.parentNode.removeChild(menu);
               input.render();
             }
