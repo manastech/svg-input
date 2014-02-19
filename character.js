@@ -84,7 +84,7 @@ function Character(text) {
 
 	self.draw = function(value) {
 		if(!arguments.length) {
-			var boundingBox = _source.firstChild.getBBox();
+			var boundingBox = _source.getBBox();
 			_source.setAttribute("width", boundingBox.width);
 			return boundingBox;
 		} else {
