@@ -3,9 +3,10 @@
 	<head>
       <title>mBuilder</title>
       <link rel="stylesheet" type="text/css" href="style.css">
+      <script type="text/javascript" src="bowser.min.js"></script>
       <script type="text/javascript" src="tools.js"></script>
       <script type="text/javascript" src="prototypes.js"></script>
-      <script type="text/javascript" src="Clipboard.js"></script>
+      <script type="text/javascript" src="clipboard.js"></script>
       <script type="text/javascript" src="invalidateElement.js"></script>
       <script type="text/javascript" src="eventDispatcher.js"></script>
       <script type="text/javascript" src="keyTracker.js"></script>
@@ -29,7 +30,7 @@
             var pill = input.getPillById("116afaa1-89a5-c86c-e03d-83dd5fab97be");
             pill.label("this is a pill");
             pill.text(undefined);
-            pill.opperator("min");
+            pill.operator("min");
             input.render();
           });
           input.GUIDgenerator = guid;
@@ -39,8 +40,8 @@
           input.addEventListener(Event.DRAG, dragHandler);
           input.addEventListener(Event.DROP, dropHandler);
           input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
-          //input.displayHiddenCharacters(true);
-          input.data(["Hola mundo\r", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", label:"this is a pill far too wide", opperator:undefined},"! new line"]);
+          input.displayHiddenCharacters(true);
+          input.data(["Hola mundo\r", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide", operator:undefined},"! new line"]);
           input.focus(true);
           input.render();
           //input.caret(Number.MAX_VALUE);
@@ -55,7 +56,7 @@
                   string += entry;
                   break;
                 case "object":
-                  string += "(" + entry.text + " [label:" + entry.label + ", id:" + entry.id + ", opperator:" + entry.opperator + "])"
+                  string += "(" + entry.text + " [id:" + entry.id + ", operator:" + entry.operator + "])"
                   break;
               }
             });
@@ -90,6 +91,7 @@
         function dragHandler(e) {
           console.log("Drag {mouseX:" + e.info.mouseX + ", mouseY:" + e.info.mouseY + "}");
           phantom = document.body.appendChild(e.info.pill);
+          phantom.style.mouseEvents = "none";
           phantom.style.position = "absolute";
           phantom.style.opacity = 0.5;
           phantom.style.left = e.info.mouseX + "px";
@@ -110,6 +112,7 @@
           contextMenu.style.position = "absolute";
           contextMenu.style.backgroundColor = "#cccccc";
           contextMenu.style.border = "1px solid #999999";
+          console.log(e.info.mouseX+" ; "+e.info.mouseY)
           contextMenu.style.left = e.info.mouseX + "px";
           contextMenu.style.top = e.info.mouseY + "px";
           addOption("Min", "min", contextMenu, e.info);
@@ -135,13 +138,25 @@
             button.style.display = "block";
             button.style.width = "100%";
             button.onclick = customHandler || function(e) {
-              info.pill.opperator(option);
+              info.pill.operator(option);
+              /*
               var label = [];
               if(option != undefined) {
-                label.push({type:"opperator", text:"option"});
+                label.push({type:"operator", text:option});
               }
-              text.push(info.pill.label());
-              info.pill.label(text);
+              label.push(info.pill.text());
+              info.pill.label(label);
+              http://www.w3.org/2000/svg"
+              */
+              var label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+              if(option != undefined) {
+                var operator = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                operator.setAttribute("class", "operator");
+                operator.textContent = option + " of ";
+                label.appendChild(operator);
+              }
+              label.appendChild(document.createTextNode(info.pill.text()));
+              info.pill.label(label);
               menu.parentNode.removeChild(menu);
               input.render();
             }

@@ -1,23 +1,23 @@
-function Pill(id, text, opperator) {
+function Pill(id, text, operator) {
 
 	var self = this;
 	var _type;
 	var _x;
 	var _y;
-	var _id = "";
-	var _label = "";
-	var _text = "";
+	var _id;
+	var _label;
+	var _text;
 	var _textHolder;
 	var _source;
 	var _displayText;
-	var _opperator;
+	var _operator;
 	var _background;
 	var _index;
 	var _focus;
 	var _boundingBox;
 	var _displayHiddenCharacters;
 
-	function init(id, label, text, opperator) {
+	function init(id, label, text, operator) {
 		_type = "pill";
 		_source = document.createElementNS("http://www.w3.org/2000/svg", "g");
 		_source.setAttribute("type", _type);
@@ -31,7 +31,7 @@ function Pill(id, text, opperator) {
 		self.id(id);
 		self.label(label);
 		self.text(text);
-		self.opperator(opperator);
+		self.operator(operator);
 		self.move(0, 0);
 		self.index(0);
 	}
@@ -49,7 +49,7 @@ function Pill(id, text, opperator) {
 			return _focus;
 		} else {
 			_focus = value;
-			_textHolder.setAttribute("class", "char" + (_focus? " char-focus" : ""));
+			_textHolder.setAttribute("class", "char" + (_focus? " char-focus" : "") + (bowser.name == "Firefox"? " firefox" : ""));
 			_background.setAttribute("class", "pill" + (_focus? " pill-focus" : ""));
 		}
 	}
@@ -90,11 +90,11 @@ function Pill(id, text, opperator) {
 		}
 	}
 
-	self.opperator = function(value) {
+	self.operator = function(value) {
 		if(!arguments.length) {
-			return _opperator;
+			return _operator;
 		} else {
-			_opperator = value;
+			_operator = value;
 		}
 	}
 
@@ -121,21 +121,23 @@ function Pill(id, text, opperator) {
 	self.draw = function() {
 		if(_boundingBox == undefined) {
 			var padding = 2;
-			var text;
-			if(self.label() != undefined) {
-				text = self.l
-			} else {
-				text = self.text();
+			var text = self.label()? self.label() : self.text();
+			_textHolder.textContent = "";
+			switch(typeof text) {
+				case "string":
+					_textHolder.textContent = parse(text) + TextDisplay.ARROW_DOWN;
+					break;
+				case "object":
+					text = text.cloneNode(true);
+					while (text.firstChild) {
+						_textHolder.appendChild(parse(text.firstChild));
+					}
+					_textHolder.appendChild(document.createTextNode(TextDisplay.ARROW_DOWN))
+					break;
 			}
-			 = self.text();
-			if(self.displayHiddenCharacters()) {
-				text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r](?![^<>]*>)/g, TextDisplay.BULLET);
-			}
-			_textHolder.textContent = text + TextDisplay.ARROW_DOWN;
+			var tempBoundingBox = _textHolder.getBBox();
 			_boundingBox = {};
-			var temp = _textHolder.getBBox();
-			for (var prop in temp) _boundingBox[prop] = temp[prop];
-			for (var prop in _boundingBox)	console.log(prop, _boundingBox[prop])
+			for (var prop in tempBoundingBox) _boundingBox[prop] = tempBoundingBox[prop];
 			_textHolder.setAttribute("transform", "translate(" + padding + ",0)");
 			_textHolder.setAttribute("width", _boundingBox.width);
 			_boundingBox.width = _boundingBox.width + padding * 2;
@@ -164,8 +166,40 @@ function Pill(id, text, opperator) {
 	}
 
 	self.toString = function() {
-		return "(" + self.text() + ")";
+		var text = "";
+		var label = self.label();
+		if(label) {
+			switch(typeof label) {
+				case "string":
+					text = label;
+					break;
+				case "object":
+					for (var node = label.firstChild; node != null; node = node.nextSibling) {
+						text += parse(node.textContent);
+					}
+					break;
+			}
+		} else {
+			text = self.text();
+		}
+		return "(" + text + ")";
 	}
 
-	init(id, text, opperator);
+	function parse(text) {
+		if(self.displayHiddenCharacters()) {
+			switch(typeof text) {
+				case "string":
+					text = text.replace(/\r/g, TextDisplay.PILCROW + TextDisplay.RETURN).replace(/[^\S\r](?![^<>]*>)/g, TextDisplay.BULLET);
+					break;
+				case "object":
+					for (var node = text.firstChild; node != null; node = node.nextSibling) {
+						node.textContent = parse(node.textContent);
+					}
+					break;
+			}
+		}
+		return text;
+	}
+
+	init(id, text, operator);
 }

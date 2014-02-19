@@ -79,7 +79,7 @@ function TextDisplay() {
 		var y = 0;
 		if(_elements.length) {
 			var element = _elements[Math.max(0, Math.min(_elements.lastIndex(), value - (insertBefore? 1 : 0)))];
-			x = element.x() + (value == _elements.length || insertBefore? _elementsWidth[element.text()] : 0);
+			x = element.x() + (value == _elements.length || insertBefore? _elementsWidth[element.toString()] : 0);
 			y = element.y() - _fontSize;
 		}
 		_IBeam.setAttribute("x", x || 0);
@@ -98,7 +98,7 @@ function TextDisplay() {
 					var element = block.childNodes[elementIndex];
 					var index = Number(element.getAttribute("data-index"));
 					var left = _elements[index].x();
-					var right = left + _elementsWidth[_elements[index].text()];
+					var right = left + _elementsWidth[_elements[index].toString()];
 					if(x > right || x > left || element == line.firstChild.firstChild) {
 						return _elements[index];
 					}
@@ -128,7 +128,7 @@ function TextDisplay() {
 				}
 			}
 		}
-		nearestPosition.index = _elements.indexOf(element) + (point.x > (element.x() + _elementsWidth[element.text()] / 2)? 1 : 0);
+		nearestPosition.index = _elements.indexOf(element) + (point.x > (element.x() + _elementsWidth[element.toString()] / 2)? 1 : 0);
 		return nearestPosition;
 	}
 
@@ -171,7 +171,7 @@ function TextDisplay() {
 		for (index = 0; index < length; index++) {
 			line = _textFlow.childNodes[index];
 			lastElement = _elements[Number(line.lastChild.lastChild.getAttribute("data-index"))];
-			_computedWidth = Math.max(_computedWidth, lastElement.x() + _elementsWidth[lastElement.text()]);
+			_computedWidth = Math.max(_computedWidth, lastElement.x() + _elementsWidth[lastElement.toString()]);
 		}
 		start = lastElement? lastElement.index() + 1 : 0;
 		length = _elements.length;
@@ -179,7 +179,7 @@ function TextDisplay() {
 		line = undefined;
 		for(index = start; index < length; index++) {
 			element = _elements[index];
-			var boundary = block == undefined || element.text().match(/\s/) || lastElement.type() == "pill" || lastElement.text().match(/\s/);
+			var boundary = block == undefined || element.toString().match(/\s/) || lastElement.type() == "pill" || lastElement.text().match(/\s/);
 			var overflow = x > width;
 			var carriageReturn = lastElement != undefined? lastElement.text() == TextDisplay.RETURN : false;
 			breakable = breakable || (lastElement != undefined? lastElement.type() != "pill" && lastElement.text().match(/\s/) != null : false);
@@ -205,18 +205,19 @@ function TextDisplay() {
 			}
 			blockElements.push(element);
 			block.appendChild(element.source());
-			if(_elementsWidth[element.text()] == undefined) {
+			var key = element.toString();
+			if(_elementsWidth[key] == undefined) {
 				var boundingBox = element.draw();
-				_elementsWidth[element.text()] = boundingBox.width;
+				_elementsWidth[key] = boundingBox.width;
 				_lineHeight = _lineHeight || boundingBox.height;
 			} else {
-				element.draw(_elementsWidth[element.text()]);
+				element.draw(_elementsWidth[key]);
 			}
 			element.move(x, y);
 			element.index(index);
-			x += _elementsWidth[element.text()];
+			x += _elementsWidth[key];
 			if(lastElement != undefined && (lastElement.type() == "pill" || !lastElement.text().match(/\s/))) {
-				_computedWidth = Math.max(_computedWidth, lastElement.x() + _elementsWidth[lastElement.text()]);
+				_computedWidth = Math.max(_computedWidth, lastElement.x() + _elementsWidth[lastElement.toString()]);
 			}
 			lastElement = element;
 		};
@@ -246,12 +247,12 @@ function TextDisplay() {
 		for (var index = range[0]; index <= range[1]; index++) {
 			var line = _textFlow.childNodes[index];
 			var last = _elements[line.lastChild.lastChild.getAttribute("data-index")];
-			var rect = {left:0, top:0 + index * _lineHeight, right:last.x() + _elementsWidth[last.text()], bottom:(index + 1) * _lineHeight};
+			var rect = {left:0, top:0 + index * _lineHeight, right:last.x() + _elementsWidth[last.toString()], bottom:(index + 1) * _lineHeight};
 			if(index == range[0]) {
 				rect.left = from.x();
 			}
 			if(index == range[1]) {
-				rect.right = to.x() + _elementsWidth[to.text()];
+				rect.right = to.x() + _elementsWidth[to.toString()];
 			}
 			rect.left = Math.round(rect.left);
 			rect.top = Math.round(rect.top);

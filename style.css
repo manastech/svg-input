@@ -26,12 +26,16 @@
 	fill:#000000;
 }
 
+.firefox {
+	font-size:16px !important;
+}
+
 .char-focus {
 	fill:#ffffff;
 }
 
-.opperator {
-	opacity: 0.66;
+.operator {
+	fill: rgba(0, 0, 0, 0.66);
 	font-style: italic;
 	pointer-events: none;
 }

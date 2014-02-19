@@ -111,7 +111,7 @@ function TextInput(containerId) {
 						data[data.lastIndex()] = data.lastElement() + element.text();
 						break;
 					case "pill":
-						data.push({id:element.id(), label:element.label(), text:element.text(), opperator:element.opperator()});
+						data.push({id:element.id(), label:element.label(), text:element.text(), operator:element.operator()});
 						break;
 				}
 			});
@@ -122,14 +122,14 @@ function TextInput(containerId) {
 			value.forEach(function(block) {
 				switch(typeof block) {
 					case "string":
-						var text = parse(block);
+						var text = sanitize(block).split("");
 						text.forEach(function(entry) {
 							_elements.push(new Character(entry));
 						});
 						info += block;
 						break;
 					case "object":
-						_elements.push(new Pill(block.id, (block.label || "").replace(/\s/g, TextDisplay.NBSP), (block.text || "").replace(/\s/g, TextDisplay.NBSP), block.opperator));
+						_elements.push(new Pill(block.id, sanitize(block.label), sanitize(block.text), block.opperator));
 						info += "(" + (block.text || block.label) + ")";
 						break;
 				}
@@ -145,7 +145,7 @@ function TextInput(containerId) {
 		_elements.splice(start, remove);
 		if(text != undefined) {
 			var insert = [];
-			text = parse(text);
+			text = sanitize(text).split("");
 			text.forEach(function(entry) {
 				insert.push(new Character(entry));
 			});
@@ -160,14 +160,7 @@ function TextInput(containerId) {
 		var string = "";
 		for(var index = from; index < to && index < _elements.length; index++) {
 			var element = _elements[index];
-			switch(element.type()) {
-				case "pill":
-					string += element.label();
-					break;
-				case "character":
-					string += element.text();
-					break;
-			}
+			string += element.text();
 		}
 		return string;
 	}
@@ -217,7 +210,7 @@ function TextInput(containerId) {
 				boundary--;
 			}
 		}
-		while (boundary > 0 && _elements[boundary - 1].text().match(/\S/)) {
+		while (boundary > 0 && _elements[boundary - 1].toString().match(/\S/)) {
 			boundary--;
 		}
 		return boundary;
@@ -249,27 +242,20 @@ function TextInput(containerId) {
 	}
 
 	self.breakPill = function(pill, replaceText) {
-		replaceText = replaceText || pill.label();
+		replaceText = replaceText || pill.text();
 		self.append(_elements.indexOf(pill), 1, replaceText);
 	}
 
 	self.createPill = function() {
-		var label = "";
+		var text = "";
 		for (var index = _selection.start(); index < _selection.end(); index++) {
 			var element = _elements[index];
-			switch(element.type()) {
-				case "pill":
-					label += element.label();
-					break;
-				case "character":
-					label += element.text();
-					break;
-			}
+			text += element.text();
 		}
 		if(self.GUIDgenerator != undefined) {
 			var id = self.GUIDgenerator();
 		}
-		_elements.splice(_selection.start(), _selection.length(), new Pill(id, label));
+		_elements.splice(_selection.start(), _selection.length(), new Pill(id, undefined, text));
 		_selection.clear();
 		self.invalidate();
 	}
@@ -349,8 +335,18 @@ function TextInput(containerId) {
 		}
 	}
 
-	function parse(string) {
-		return string.replace(/\r\n|\r|\n/g, TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.NBSP).split("");
+	function sanitize(text) {
+		switch(typeof text) {
+			case "string":
+				text = text.replace(/\r\n|\r|\n/g, TextDisplay.RETURN).replace(/[^\S\r]/g, TextDisplay.NBSP);
+				break;
+			case "object":
+				for (var node = text.firstChild; node != null; node = node.nextSibling) {
+					node.textContent = sanitize(node.textContent);
+				}
+				break;
+		}
+		return text;
 	}
 
 	function mouseHandler(e) {
@@ -434,7 +430,7 @@ function TextInput(containerId) {
 							self.caret(_caret - 1, insertBefore);
 						}
 						_elements.splice(_caret, 0, element);
-						self.render(index);
+						self.render();
 						index = _caret;
 					}
 					_dragTarget = undefined;
@@ -466,8 +462,9 @@ function TextInput(containerId) {
 	function contextMenuHandler(e) {
 		if(e.target.parentNode.getAttribute("type") == "pill") {
 			var info = {};
-			info.mouseX = e.x;
-			info.mouseY = e.y;
+			var mouse = mousePosition(e);
+			info.mouseX = mouse.x;
+			info.mouseY = mouse.y;
 			info.pill = self.getPillById(e.target.parentNode.getAttribute("data-id"));
 			self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
 		}

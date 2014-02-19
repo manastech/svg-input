@@ -34,7 +34,7 @@ function Character(text) {
 			return _focus;
 		} else {
 			_focus = value;
-			_source.setAttribute("class", "char" + (_focus? " char-focus" : ""));
+			_source.setAttribute("class", "char" + (_focus? " char-focus" : "") + (bowser.name == "Firefox"? " firefox" : ""));
 		}
 	}
 
