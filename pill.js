@@ -49,7 +49,7 @@ function Pill(id, text, operator) {
 			return _focus;
 		} else {
 			_focus = value;
-			_textHolder.setAttribute("class", "char" + (_focus? " char-focus" : "") + (bowser.name == "Firefox"? " firefox" : ""));
+			_textHolder.setAttribute("class", "char" + (_focus? " char-focus" : ""));
 			_background.setAttribute("class", "pill" + (_focus? " pill-focus" : ""));
 		}
 	}

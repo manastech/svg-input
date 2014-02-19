@@ -34,7 +34,7 @@ function Character(text) {
 			return _focus;
 		} else {
 			_focus = value;
-			_source.setAttribute("class", "char" + (_focus? " char-focus" : "") + (bowser.name == "Firefox"? " firefox" : ""));
+			_source.setAttribute("class", "char" + (_focus? " char-focus" : ""));
 		}
 	}
 
@@ -84,7 +84,7 @@ function Character(text) {
 
 	self.draw = function(value) {
 		if(!arguments.length) {
-			var boundingBox = _source.getBBox();
+			var boundingBox = _source.firstChild.getBBox();
 			_source.setAttribute("width", boundingBox.width);
 			return boundingBox;
 		} else {
