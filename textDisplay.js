@@ -208,7 +208,7 @@ function TextDisplay() {
 			var key = element.toString();
 			if(_elementsWidth[key] == undefined) {
 				var boundingBox = element.draw();
-				_elementsWidth[key] = boundingBox.width;
+				_elementsWidth[key] = boundingBox.width - (bowser.firefox && _fontSize < 16? 3 : 0);
 				_lineHeight = _lineHeight || boundingBox.height;
 			} else {
 				element.draw(_elementsWidth[key]);
