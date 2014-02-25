@@ -121,20 +121,24 @@ function Pill(id, text, operator) {
 	self.draw = function() {
 		if(_boundingBox == undefined) {
 			var padding = 2;
-			var text = self.label()? self.label() : self.text();
-			_textHolder.textContent = "";
+			var text = self.label() || self.text();
+			var node;
 			switch(typeof text) {
-				case "string":
-					_textHolder.textContent = parse(text) + TextDisplay.ARROW_DOWN;
-					break;
 				case "object":
-					text = text.cloneNode(true);
-					while (text.firstChild) {
-						_textHolder.appendChild(parse(text.firstChild));
-					}
-					_textHolder.appendChild(document.createTextNode(TextDisplay.ARROW_DOWN))
+					node = text.cloneNode(true);
+					break;
+				case "string":
+					node = document.createElementNS("http://www.w3.org/2000/svg", "text");
+					node.appendChild(document.createTextNode(text));
 					break;
 			}
+			_textHolder.textContent = "";
+			while (node.firstChild) {
+				_textHolder.appendChild(parse(node.firstChild));
+			}
+			var arrow = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+			arrow.textContent = TextDisplay.ARROW_DOWN;
+			_textHolder.appendChild(arrow);
 			var tempBoundingBox = _textHolder.getBBox();
 			_boundingBox = {};
 			for (var prop in tempBoundingBox) _boundingBox[prop] = tempBoundingBox[prop];

@@ -19,7 +19,7 @@
       <script type="text/javascript" src="textDisplay.js"></script>
       <script>
 
-        var input, phantom, createButton, updateButton;
+        var input, phantom, createButton, updateButton, _contextMenu;
 
         function init() {
           input = new TextInput("input");
@@ -109,28 +109,37 @@
         }
 
         function contextMenuHandler(e) {
-          var contextMenu = document.body.appendChild(document.createElement("div"));
-          contextMenu.style.position = "absolute";
-          contextMenu.style.backgroundColor = "#cccccc";
-          contextMenu.style.border = "1px solid #999999";
-          console.log(e.info.mouseX+" ; "+e.info.mouseY)
-          contextMenu.style.left = e.info.mouseX + "px";
-          contextMenu.style.top = e.info.mouseY + "px";
-          addOption("Min", "min", contextMenu, e.info);
-          addOption("Max", "max", contextMenu, e.info);
-          addOption("Sum", "sum", contextMenu, e.info);
-          addOption("Average", "average", contextMenu, e.info);
-          addOption("None", undefined, contextMenu, e.info);
-          addOption("Break", undefined, contextMenu, e.info, function() {
+          if(_contextMenu && _contextMenu.parentNode) {
+            _contextMenu.parentNode.removeChild(_contextMenu);
+          }
+          _contextMenu = document.body.appendChild(document.createElement("div"));
+          _contextMenu.style.position = "absolute";
+          _contextMenu.style.backgroundColor = "#cccccc";
+          _contextMenu.style.border = "1px solid #999999";
+          addOption("Min", "min", _contextMenu, e.info);
+          addOption("Max", "max", _contextMenu, e.info);
+          addOption("Sum", "sum", _contextMenu, e.info);
+          addOption("Average", "average", _contextMenu, e.info);
+          addOption("None", undefined, _contextMenu, e.info);
+          addOption("Break", undefined, _contextMenu, e.info, function() {
             input.breakPill(e.info.pill);
-            contextMenu.parentNode.removeChild(contextMenu);
+            _contextMenu.parentNode.removeChild(_contextMenu);
             input.render();
           });
-          document.addEventListener("mousedown", function(e) {
-            if(!contextMenu.contains(e.target) && contextMenu.parentNode) {
-              contextMenu.parentNode.removeChild(contextMenu);
+          var x = e.info.mouseX || e.info.pill.x();
+          var y = e.info.mouseY || e.info.pill.y();
+          if(e.info.eventAt == "arrow") {
+            x -= _contextMenu.getBoundingClientRect().width;
+            y += 5;
+          }
+          _contextMenu.style.left = x + "px";
+          _contextMenu.style.top = y + "px";
+          function closeContextMenu(e) {
+            if(!_contextMenu.contains(e.target) && _contextMenu.parentNode) {
+              _contextMenu.parentNode.removeChild(_contextMenu);
             }
-          });
+          }
+          document.addEventListener("mousedown", closeContextMenu);
         }
 
         function addOption(label, option, menu, info, customHandler) {

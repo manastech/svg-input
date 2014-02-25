@@ -28,16 +28,22 @@ function KeyTracker(input) {
 		}
 	}
 
+	function insert(charCode) {
+		var start = _input.selection().length()? _input.selection().start() : _input.caret();
+		var remove = _input.selection().length();
+		var char = String.fromCharCode(charCode);
+		_input.selection().clear();
+		_input.append(start, remove, char);
+		_input.caret(start + 1, charCode != 13);
+	}
+
 	function keyPressHandler(e) {
 		e.preventDefault();
 		switch(e.charCode) {
+			case 13://Enter
+				break;
 			default:
-				var start = _input.selection().length()? _input.selection().start() : _input.caret();
-				var remove = _input.selection().length();
-				var char = String.fromCharCode(e.charCode);
-				_input.selection().clear();
-				_input.append(start, remove, char);
-				_input.caret(start + 1, e.charCode != 13);
+				insert(e.charCode);
 				break;
 		}
 	}
@@ -60,6 +66,9 @@ function KeyTracker(input) {
 			case 9://Tab
 			case 27://Escape
 				_input.focus(false);
+				break;
+			case 13://Enter
+				insert(e.keyCode);
 				break;
 			case 35://End
 				caret = Number.MAX_VALUE;

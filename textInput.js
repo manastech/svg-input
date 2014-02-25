@@ -359,6 +359,17 @@ function TextInput(containerId) {
 		mouse.y -= _container.offsetTop - _container.scrollTop + _margin;
 		switch(e.type) {
 			case "mousedown":
+				if(e.target.textContent == TextDisplay.ARROW_DOWN) {
+					e.stopImmediatePropagation();
+					var info = {};
+					info.pill = self.getPillById(e.target.parentNode.parentNode.getAttribute("data-id"));
+					var boundingBox = info.pill.source().getBBox();
+					info.mouseX =  _container.offsetLeft + boundingBox.x + boundingBox.width + self.margin(); 
+					info.mouseY =  _container.offsetTop + boundingBox.y + boundingBox.height + self.margin(); 
+					info.eventAt = "arrow";
+					self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
+					return;
+				}
 				window.addEventListener("mousemove", mouseHandler);
 				window.addEventListener("mouseup", mouseHandler);
 				if(e.target.parentNode.getAttribute("type") == "pill") {
@@ -460,12 +471,23 @@ function TextInput(containerId) {
 	}
 
 	function contextMenuHandler(e) {
-		if(e.target.parentNode.getAttribute("type") == "pill") {
-			var info = {};
+		var isPill = false;
+		var node = e.target;
+		while(node.parentNode) {
+			isPill = node.parentNode.getAttribute && node.parentNode.getAttribute("type") == "pill";
+			if(isPill) {
+				break;
+			} else {
+				node = node.parentNode;
+			}
+		}
+		if(isPill) {
 			var mouse = mousePosition(e);
+			var info = {};
+			info.pill = self.getPillById(e.target.parentNode.getAttribute("data-id"));
 			info.mouseX = mouse.x;
 			info.mouseY = mouse.y;
-			info.pill = self.getPillById(e.target.parentNode.getAttribute("data-id"));
+			info.eventAt = "pill";
 			self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
 		}
 		e.preventDefault();
