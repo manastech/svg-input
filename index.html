@@ -92,7 +92,6 @@
         function dragHandler(e) {
           console.log("Drag {mouseX:" + e.info.mouseX + ", mouseY:" + e.info.mouseY + "}");
           phantom = document.body.appendChild(e.info.pill);
-          phantom.style.mouseEvents = "none";
           phantom.style.position = "absolute";
           phantom.style.opacity = 0.5;
           phantom.style.left = e.info.mouseX + "px";
@@ -101,7 +100,7 @@
         }
 
         function dropHandler(e) {
-          console.log("Drop");
+          console.log("Drop", e.info.dropZone);
           if(phantom.parentNode) {
             phantom.parentNode.removeChild(phantom);
           }
@@ -185,5 +184,6 @@
           <button id="createButton" style="display:inline-block;">Create pill</button>
         </div>
       </div>
+      <div id="drop" style="border:1px solid red;width:100px; height:100px" onmouseup="alert('foo')"></div>
    	</body>
 </html>
