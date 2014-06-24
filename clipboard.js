@@ -66,6 +66,7 @@ function Clipboard(input) {
 						_clipboard.select();
 						_input.append(_input.selection().start(), _input.selection().length());
 						_input.caret(_input.caret());
+						_input.selection().clear();
 						setTimeout(function () {
 							_clipboard.blur();
 						}, 10);
