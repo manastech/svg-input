@@ -23,15 +23,15 @@ function TextInput(containerId) {
 	var _debug;
 
 	function init(containerId) {
-		_selection = new Selection();
-		_selection.addEventListener(Event.SELECT, selectHandler);
-		_keyTracker = new KeyTracker(self, _selection);
-		_clipboard = new Clipboard(self, _selection);
-		_display = new TextDisplay();
 		_container = document.getElementById(containerId);
-		_container.addEventListener("mousedown", mouseHandler);
+		_container.addEventListener("mousedown", mouseHandler, true);
 		_container.addEventListener("dblclick", doubleClickHandler);
 		_container.addEventListener("contextmenu", contextMenuHandler);
+		_selection = new Selection();
+		_selection.addEventListener(Event.SELECT, selectHandler);
+		_keyTracker = new KeyTracker(self);
+		_clipboard = new Clipboard(self, _selection);
+		_display = new TextDisplay();
 		_wrapper = _container.appendChild(document.createElement("div"));
 		_wrapper.style.cursor = "text";
 		_wrapper.id = "wrapper";
@@ -47,13 +47,13 @@ function TextInput(containerId) {
 		} else {
 			_focus = value;
 			if(_focus) {
-				document.addEventListener("click", clickOutsideHandler);
+				document.addEventListener("mouseUp", clickOutsideHandler);
 				_container.className = "svgInput svgInput-focus";
 				_display.focus(true);
 				_keyTracker.activate();
 				_clipboard.activate();
 			} else {
-				document.removeEventListener("click", clickOutsideHandler);
+				document.removeEventListener("mouseUp", clickOutsideHandler);
 				_container.className = "svgInput";
 				_display.focus(false);
 				_keyTracker.deactivate();
@@ -185,7 +185,7 @@ function TextInput(containerId) {
 			if(!persistPlumb) {
 				_plumb = undefined;
 			}
-			if(self.debug()) console.log(self.toString());
+			if(self.debug()) self.toString();
 		}
 	}
 
@@ -370,8 +370,8 @@ function TextInput(containerId) {
 					self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
 					return;
 				}
-				window.addEventListener("mousemove", mouseHandler);
-				window.addEventListener("mouseup", mouseHandler);
+				window.addEventListener("mousemove", mouseHandler, true);
+				window.addEventListener("mouseup", mouseHandler, true);
 				if(e.target.parentNode.getAttribute("type") == "pill") {
 					_dragTarget = e.target.parentNode;
 					var bounds = _dragTarget.getBBox();
@@ -394,8 +394,8 @@ function TextInput(containerId) {
 				}
 				break;
 			case "mouseup":
-				window.removeEventListener("mousemove", mouseHandler);
-				window.removeEventListener("mouseup", mouseHandler);
+				window.removeEventListener("mousemove", mouseHandler, true);
+				window.removeEventListener("mouseup", mouseHandler, true);
 				break;
 		}
 		var caret;
@@ -419,6 +419,8 @@ function TextInput(containerId) {
 					} else {
 						_selection.set(_caret, caret);
 					}
+				} else if(e.detail == 3) {
+					_selection.set(0, Number.MAX_VALUE);
 				} else {
 					_selection.clear();
 				}
@@ -449,6 +451,7 @@ function TextInput(containerId) {
 					self.caret(index + 1, insertBefore);
 					document.body.style.cursor = "auto";
 					self.dispatchEvent(new Event(Event.DROP, {dropZone:e.target}));
+					e.stopImmediatePropagation();
 				}
 				break;
 		}
@@ -458,7 +461,7 @@ function TextInput(containerId) {
 		if(e.target.getAttribute("data-index")) {
 			var firstNode = e.target.parentNode.firstChild;
 			var lastNode = e.target.parentNode.lastChild;
-			if(firstNode.textContent.match(TextDisplay.NBSP)) {
+			/*if(firstNode.textContent.match(TextDisplay.NBSP)) {
 				if(firstNode.parentNode.previousSibling) {
 					firstNode = firstNode.parentNode.previousSibling.firstChild;
 				}
@@ -466,7 +469,7 @@ function TextInput(containerId) {
 				if(lastNode.parentNode.nextSibling) {
 					lastNode = lastNode.parentNode.nextSibling.lastChild;
 				}
-			}
+			}*/
 			_selection.set(Number(firstNode.getAttribute("data-index")), Number(lastNode.getAttribute("data-index")) + 1);
 		}
 	}
@@ -489,9 +492,12 @@ function TextInput(containerId) {
 			info.mouseX = mouse.x;
 			info.mouseY = mouse.y;
 			info.eventAt = "pill";
+			info.sourceEvent = e;
+			info.preventDefault = function() {
+				this.sourceEvent.preventDefault();
+			}
 			self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
 		}
-		e.preventDefault();
 	}
 
 	function clickOutsideHandler(e) {

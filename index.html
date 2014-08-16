@@ -81,16 +81,13 @@
         }
 
         function changeHandler(e) {
-          console.log("Change {entry:" + e.info + "}");
-        }
+                  }
 
         function selectHandler(e) {
-          console.log("Select {length:" + e.info.length + ", start:" + e.info.start + ", end:" + e.info.end + ", from:" + e.info.from + ", to:" + e.info.to + "}");
-          createButton.style.display = e.info.length? "inline-block" : "none";
+                    createButton.style.display = e.info.length? "inline-block" : "none";
         }
 
         function dragHandler(e) {
-          console.log("Drag {mouseX:" + e.info.mouseX + ", mouseY:" + e.info.mouseY + "}");
           phantom = document.body.appendChild(e.info.pill);
           phantom.style.position = "absolute";
           phantom.style.opacity = 0.5;
@@ -100,7 +97,6 @@
         }
 
         function dropHandler(e) {
-          console.log("Drop", e.info.dropZone);
           if(phantom.parentNode) {
             phantom.parentNode.removeChild(phantom);
           }
@@ -111,6 +107,7 @@
           if(_contextMenu && _contextMenu.parentNode) {
             _contextMenu.parentNode.removeChild(_contextMenu);
           }
+          e.info.preventDefault();
           _contextMenu = document.body.appendChild(document.createElement("div"));
           _contextMenu.style.position = "absolute";
           _contextMenu.style.backgroundColor = "#cccccc";

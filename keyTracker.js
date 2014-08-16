@@ -2,16 +2,25 @@ function KeyTracker(input) {
 
 	var self = this;
 	var _active = false;
-	var _input = input;
+	var _input;
+	var _isMac;
+	var _caps;
+
+	function init(input) {
+		_input = input;
+		_isMac = navigator.platform.match(/(Mac|iPhone|iPod|iPad)/i)? true : false;
+	}
 
 	self.activate = function() {
 		_active = true;
+		document.addEventListener("keyup", keyUpHandler);
 		document.addEventListener("keypress", keyPressHandler);
 		document.addEventListener("keydown", keyDownHandler);
 	}
 
 	self.deactivate = function() {
 		_active = false;
+		document.removeEventListener("keyup", keyUpHandler);
 		document.removeEventListener("keypress", keyPressHandler);
 		document.removeEventListener("keydown", keyDownHandler);
 	}
@@ -37,13 +46,35 @@ function KeyTracker(input) {
 		_input.caret(start + 1, charCode != 13);
 	}
 
+	function keyUpHandler(e) {
+		console.log("key up", e.keyCode, _caps)
+		//blur not working
+		//on focus clear accent
+		//_accent = acute | grave | caret | diaeresis | tilde
+		//switch _accent, find matches, select accented char, if (_caps && !shift) || (!_caps && shift) toUpperCas(), default insert empty accent. clear accent
+		//69 acute		'áéíóú
+		//73 caret		^âêîôû
+		//78 tilde		~ãõñ
+		//85 diaeresis	"äëïöü
+		//192 grave		`àèìòù
+	}
+
 	function keyPressHandler(e) {
+		var keyCode = e.which? e.which : (e.keyCode? e.keyCode : (e.charCode? e.charCode : 0));
+		var shiftKey = e.shiftKey || (e.modifiers && (e.modifiers & 4));
+		var char = String.fromCharCode(keyCode);
+		if ((char.toUpperCase() == char) && (char.toLowerCase() != char) && !shiftKey) {
+			_caps = true;
+		} else {
+			_caps = false;
+		}
+		console.log("key press", keyCode)
 		e.preventDefault();
-		switch(e.charCode) {
+		switch(keyCode) {
 			case 13://Enter
 				break;
 			default:
-				insert(e.charCode);
+				insert(keyCode);
 				break;
 		}
 	}
@@ -52,6 +83,7 @@ function KeyTracker(input) {
 		var start, remove;
 		var caret = _input.caret();
 		var preventDefault = true;
+		console.log(e.keyCode, e.altKey, e)
 		switch(e.keyCode) {
 			case 8://Backspace
 				if(caret || _input.selection().length()) {
@@ -81,7 +113,7 @@ function KeyTracker(input) {
 				_input.caret(caret);
 				break;
 			case 37://Arrow left
-				if(e.ctrlKey || e.metaKey) {
+				if((_isMac && e.altKey) || (!_isMac && e.ctrlKey)) {
 					caret = _input.prevBoundary(caret - 1);
 				} else {
 					caret--;
@@ -94,7 +126,7 @@ function KeyTracker(input) {
 				select(e.shiftKey, caret, _input.caret());
 				break;
 			case 39://Arrow right
-				if(e.ctrlKey || e.metaKey) {
+				if((_isMac && e.altKey) || (!_isMac && e.ctrlKey)) {
 					var nextBoundary = _input.nextBoundary(caret);
 					if(nextBoundary != -1) {
 						caret = nextBoundary + 1;
@@ -125,4 +157,6 @@ function KeyTracker(input) {
 		}
 		if(preventDefault) e.preventDefault();
 	}
+
+	init(input);
 }
