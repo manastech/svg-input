@@ -99,6 +99,10 @@ function TextInput(containerId) {
 		return Number(style.getPropertyValue("height").match(/\d+/));
 	}
 
+	self.container = function() {
+		return _container;
+	}
+
 	self.data = function(value) {
 		if(!arguments.length) {
 			var data = [];

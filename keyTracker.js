@@ -3,26 +3,39 @@ function KeyTracker(input) {
 	var self = this;
 	var _active = false;
 	var _input;
+	var _container;
+	var _hiddenInput;
+	var _deadKey;
 	var _isMac;
-	var _caps;
 
 	function init(input) {
 		_input = input;
+		_container = _input.container();
 		_isMac = navigator.platform.match(/(Mac|iPhone|iPod|iPad)/i)? true : false;
+		_hiddenInput = document.createElement("input")
+		var hiddenInputContainer = _container.appendChild(document.createElement("div"));
+		hiddenInputContainer.style.opacity = 0;
+		hiddenInputContainer.style.width = 0;
+		hiddenInputContainer.style.height = 0;
+		hiddenInputContainer.style.overflows = "hidden";
+		hiddenInputContainer.style.pointerEvents = "none";
+		hiddenInputContainer.appendChild(_hiddenInput);
 	}
 
 	self.activate = function() {
 		_active = true;
-		document.addEventListener("keyup", keyUpHandler);
-		document.addEventListener("keypress", keyPressHandler);
-		document.addEventListener("keydown", keyDownHandler);
+		_hiddenInput.focus();
+		_hiddenInput.select();
+		_hiddenInput.addEventListener("keypress", keyPressHandler);
+		_hiddenInput.addEventListener("keydown", keyDownHandler);
+		_hiddenInput.addEventListener("input", inputHandler);
 	}
 
 	self.deactivate = function() {
 		_active = false;
-		document.removeEventListener("keyup", keyUpHandler);
-		document.removeEventListener("keypress", keyPressHandler);
-		document.removeEventListener("keydown", keyDownHandler);
+		_hiddenInput.blur();
+		_hiddenInput.removeEventListener("keypress", keyPressHandler);
+		_hiddenInput.removeEventListener("keydown", keyDownHandler);
 	}
 
 	function select(shift, from, to) {
@@ -46,30 +59,12 @@ function KeyTracker(input) {
 		_input.caret(start + 1, charCode != 13);
 	}
 
-	function keyUpHandler(e) {
-		console.log("key up", e.keyCode, _caps)
-		//blur not working
-		//on focus clear accent
-		//_accent = acute | grave | caret | diaeresis | tilde
-		//switch _accent, find matches, select accented char, if (_caps && !shift) || (!_caps && shift) toUpperCas(), default insert empty accent. clear accent
-		//69 acute		'áéíóú
-		//73 caret		^âêîôû
-		//78 tilde		~ãõñ
-		//85 diaeresis	"äëïöü
-		//192 grave		`àèìòù
+	function getKeyCode(e) {
+		return e.which? e.which : (e.keyCode? e.keyCode : (e.charCode? e.charCode : 0));
 	}
 
 	function keyPressHandler(e) {
-		var keyCode = e.which? e.which : (e.keyCode? e.keyCode : (e.charCode? e.charCode : 0));
-		var shiftKey = e.shiftKey || (e.modifiers && (e.modifiers & 4));
-		var char = String.fromCharCode(keyCode);
-		if ((char.toUpperCase() == char) && (char.toLowerCase() != char) && !shiftKey) {
-			_caps = true;
-		} else {
-			_caps = false;
-		}
-		console.log("key press", keyCode)
-		e.preventDefault();
+		var keyCode = getKeyCode(e);
 		switch(keyCode) {
 			case 13://Enter
 				break;
@@ -77,14 +72,15 @@ function KeyTracker(input) {
 				insert(keyCode);
 				break;
 		}
+		e.preventDefault();
 	}
 
 	function keyDownHandler(e) {
+		var keyCode = getKeyCode(e);
 		var start, remove;
 		var caret = _input.caret();
 		var preventDefault = true;
-		console.log(e.keyCode, e.altKey, e)
-		switch(e.keyCode) {
+		switch(keyCode) {
 			case 8://Backspace
 				if(caret || _input.selection().length()) {
 					start = _input.selection().length()? _input.selection().start() : caret - 1;
@@ -100,7 +96,7 @@ function KeyTracker(input) {
 				_input.focus(false);
 				break;
 			case 13://Enter
-				insert(e.keyCode);
+				insert(keyCode);
 				break;
 			case 35://End
 				caret = Number.MAX_VALUE;
@@ -156,6 +152,14 @@ function KeyTracker(input) {
 				break;
 		}
 		if(preventDefault) e.preventDefault();
+	}
+
+	function inputHandler(e) {
+		if(_deadKey) {
+			insert(_hiddenInput.value.charCodeAt(0));
+			_hiddenInput.value = "";
+		}
+		_deadKey = _hiddenInput.value.length > 0;
 	}
 
 	init(input);
