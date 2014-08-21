@@ -33,9 +33,9 @@ function KeyTracker(input) {
 
 	self.deactivate = function() {
 		_active = false;
-		_hiddenInput.blur();
 		_hiddenInput.removeEventListener("keypress", keyPressHandler);
 		_hiddenInput.removeEventListener("keydown", keyDownHandler);
+		_hiddenInput.removeEventListener("input", inputHandler);
 	}
 
 	function select(shift, from, to) {

@@ -47,13 +47,13 @@ function TextInput(containerId) {
 		} else {
 			_focus = value;
 			if(_focus) {
-				document.addEventListener("mouseUp", clickOutsideHandler);
+				window.addEventListener("mouseup", clickOutsideHandler, true);
 				_container.className = "svgInput svgInput-focus";
 				_display.focus(true);
 				_keyTracker.activate();
 				_clipboard.activate();
 			} else {
-				document.removeEventListener("mouseUp", clickOutsideHandler);
+				window.removeEventListener("mouseup", clickOutsideHandler, true);
 				_container.className = "svgInput";
 				_display.focus(false);
 				_keyTracker.deactivate();
@@ -335,7 +335,6 @@ function TextInput(containerId) {
 			return _debug;
 		} else {
 			_debug = value;
-			console.log(self.toString());
 		}
 	}
 
@@ -436,6 +435,7 @@ function TextInput(containerId) {
 				} else {
 					self.caret(caret, insertBefore);
 				}
+				e.preventDefault();
 				break;
 			case "mouseup":
 				self.caret(caret, insertBefore);
@@ -465,7 +465,8 @@ function TextInput(containerId) {
 		if(e.target.getAttribute("data-index")) {
 			var firstNode = e.target.parentNode.firstChild;
 			var lastNode = e.target.parentNode.lastChild;
-			/*if(firstNode.textContent.match(TextDisplay.NBSP)) {
+			/*
+			if(firstNode.textContent.match(TextDisplay.NBSP)) {
 				if(firstNode.parentNode.previousSibling) {
 					firstNode = firstNode.parentNode.previousSibling.firstChild;
 				}
@@ -473,7 +474,8 @@ function TextInput(containerId) {
 				if(lastNode.parentNode.nextSibling) {
 					lastNode = lastNode.parentNode.nextSibling.lastChild;
 				}
-			}*/
+			}
+			*/
 			_selection.set(Number(firstNode.getAttribute("data-index")), Number(lastNode.getAttribute("data-index")) + 1);
 		}
 	}
