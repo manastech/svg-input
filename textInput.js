@@ -1,4 +1,4 @@
-function TextInput(containerId) {
+function TextInput(container) {
 
 	EventDispatcher.call(this);
 	InvalidateElement.call(this);
@@ -22,8 +22,8 @@ function TextInput(containerId) {
 	var _displayHiddenCharacters;
 	var _debug;
 
-	function init(containerId) {
-		_container = document.getElementById(containerId);
+	function init(container) {
+		_container = container;
 		_container.addEventListener("mousedown", mouseHandler, true);
 		_container.addEventListener("dblclick", doubleClickHandler);
 		_container.addEventListener("contextmenu", contextMenuHandler);
@@ -32,6 +32,13 @@ function TextInput(containerId) {
 		_keyTracker = new KeyTracker(self);
 		_clipboard = new Clipboard(self, _selection);
 		_display = new TextDisplay();
+    _container.addEventListener("dragover", mouseHandler);
+    _container.addEventListener("drop", mouseHandler);
+    _container.addEventListener("mousemove", function(){
+      if (self.isForeignObjectDragged()) {
+        trackMousePositionForDrop();
+      }
+    });
 		_wrapper = _container.appendChild(document.createElement("div"));
 		_wrapper.style.cursor = "text";
 		_wrapper.id = "wrapper";
@@ -40,6 +47,10 @@ function TextInput(containerId) {
 		self.margin(5);
 		self.displayHiddenCharacters(false);
 	}
+
+  self.isForeignObjectDragged = function() {
+    return false;
+  }
 
 	self.focus = function(value) {
 		if(!arguments.length) {
@@ -115,7 +126,7 @@ function TextInput(containerId) {
 						data[data.lastIndex()] = data.lastElement() + element.text();
 						break;
 					case "pill":
-						data.push({id:element.id(), label:element.label(), text:element.text(), operator:element.operator()});
+						data.push(element.toJson());
 						break;
 				}
 			});
@@ -133,7 +144,7 @@ function TextInput(containerId) {
 						info += block;
 						break;
 					case "object":
-						_elements.push(new Pill(block.id, sanitize(block.label), sanitize(block.text), block.opperator));
+						_elements.push(new Pill(block.id, sanitize(block.label), sanitize(block.text), block.hasMenu, block.data));
 						info += "(" + (block.text || block.label) + ")";
 						break;
 				}
@@ -250,12 +261,17 @@ function TextInput(containerId) {
 		self.append(_elements.indexOf(pill), 1, replaceText);
 	}
 
+  self.selectionText = function(start, end) {
+    var text = "";
+    for (var index = start; index < end; index++) {
+      var element = _elements[index];
+      text += element.text();
+    }
+    return text;
+  }
+
 	self.createPill = function() {
-		var text = "";
-		for (var index = _selection.start(); index < _selection.end(); index++) {
-			var element = _elements[index];
-			text += element.text();
-		}
+		var text = self.selectionText(_selection.start(), _selection.end());
 		if(self.GUIDgenerator != undefined) {
 			var id = self.GUIDgenerator();
 		}
@@ -263,6 +279,13 @@ function TextInput(containerId) {
 		_selection.clear();
 		self.invalidate();
 	}
+
+  self.insertPillAtCaret = function(id, label, text, hasMenu, data) {
+    _elements.splice(_caret, 0, new Pill(id, sanitize(label), sanitize(text), hasMenu, data));
+    self.invalidate();
+    //BUG: caret is not leaft on drop position
+    self.dispatchEvent(new Event(Event.CHANGE));
+  }
 
 	self.render = function(start) {
 		var innerWidth = self.width() - _margin * 2;
@@ -352,51 +375,64 @@ function TextInput(containerId) {
 		return text;
 	}
 
+  function trackMousePositionForDrop() {
+    window.addEventListener("mousemove", mouseHandler, true);
+    window.addEventListener("mouseup", mouseHandler, true);
+    _selection.clear();
+  }
+
 	function mouseHandler(e) {
+    e.preventDefault(); // avoid selection to start
 		if(_container.contains(e.target)) {
 			self.focus(true);
-		}
+		} else {
+      self.focus(false);
+    }
 		if(e.target == _container || e.button) return;
 		var mouse = mousePosition(e);
 		mouse.x -= _container.offsetLeft - _container.scrollLeft + _margin;
 		mouse.y -= _container.offsetTop - _container.scrollTop + _margin;
 		switch(e.type) {
 			case "mousedown":
+        $(document.activeElement).blur();
 				if(e.target.textContent == TextDisplay.ARROW_DOWN) {
 					e.stopImmediatePropagation();
 					var info = {};
 					info.pill = self.getPillById(e.target.parentNode.parentNode.getAttribute("data-id"));
 					var boundingBox = info.pill.source().getBBox();
-					info.mouseX =  _container.offsetLeft + boundingBox.x + boundingBox.width + self.margin(); 
-					info.mouseY =  _container.offsetTop + boundingBox.y + boundingBox.height + self.margin(); 
+					info.mouseX =  _container.offsetLeft + boundingBox.x + boundingBox.width + self.margin();
+					info.mouseY =  _container.offsetTop + boundingBox.y + boundingBox.height + self.margin();
 					info.eventAt = "arrow";
-					self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
+          self.dispatchEvent(new Event(Event.CONTEXT_MENU, info));
 					return;
 				}
-				window.addEventListener("mousemove", mouseHandler, true);
-				window.addEventListener("mouseup", mouseHandler, true);
-				if(e.target.parentNode.getAttribute("type") == "pill") {
+        trackMousePositionForDrop();
+        _dragTarget = null;
+        if(_container.contains(e.target) && e.target.parentNode.getAttribute("type") == "pill") {
 					_dragTarget = e.target.parentNode;
+          var pill = self.getPillById(_dragTarget.getAttribute("data-id"));
 					var bounds = _dragTarget.getBBox();
-					var pill = document.createElement("div");
-					var svg = pill.appendChild(document.createElementNS("http://www.w3.org/2000/svg","svg"));
+					var phantom = document.createElement("div");
+					var svg = phantom.appendChild(document.createElementNS("http://www.w3.org/2000/svg","svg"));
 					svg.style.position = "absolute";
 					svg.style.left = (bounds.x - mouse.x + _margin) + "px";
 					svg.style.top = (bounds.y - mouse.y + _margin) + "px";
 					var clone = svg.appendChild(_dragTarget.cloneNode(true));
-					pill.style.width = bounds.width + "px";
-		            pill.style.height = bounds.height + "px";
-		            pill.style.pointerEvents = "none";
+					phantom.style.width = bounds.width + "px";
+          phantom.style.height = bounds.height + "px";
+          phantom.style.pointerEvents = "none"
 					for (var index = clone.childElementCount - 1; index >= 0; index--) {
 						var child = clone.childNodes[index];
 						child.setAttribute("x", 0);
 						child.setAttribute("y", _display.fontSize());
 					}
-					document.body.style.cursor = "move";
-					self.dispatchEvent(new Event(Event.DRAG, {pill:pill, mouseX:mouse.x + _container.offsetLeft - _container.scrollLeft, mouseY:mouse.y + _container.offsetTop - _container.scrollTop}));
+					_wrapper.style.cursor = "move";
+					self.dispatchEvent(new Event(Event.DRAG, {pill:pill.toJson(), phantom:phantom, mouseX:mouse.x + _container.offsetLeft - _container.scrollLeft, mouseY:mouse.y + _container.offsetTop - _container.scrollTop}));
 				}
 				break;
 			case "mouseup":
+			case "drop":
+				_wrapper.style.cursor = "text";
 				window.removeEventListener("mousemove", mouseHandler, true);
 				window.removeEventListener("mouseup", mouseHandler, true);
 				break;
@@ -404,12 +440,12 @@ function TextInput(containerId) {
 		var caret;
 		var insertBefore = false;
 		var index = e.target.getAttribute("data-index");
-		if(index) {
+		if(_container.contains(e.target) && index) {
 			var element = _elements[index];
 			caret = Number(index) + (mouse.x > (element.x() + element.source().getBBox().width / 2)? 1 : 0);
 			insertBefore = element.source().parentNode.nextSibling == undefined;
 		} else {
-			var contour = _dragTarget == undefined;
+			var contour = _dragTarget != null;
 			var nearestPosition = _display.nearestPosition(mouse, contour);
 			caret = nearestPosition.index;
 			insertBefore = nearestPosition.insertBefore;
@@ -429,17 +465,21 @@ function TextInput(containerId) {
 				}
 				self.caret(caret, insertBefore);
 				break;
-			case "mousemove":
-				if(_dragTarget == undefined) {
+      case "dragover":
+        self.caret(caret, insertBefore);
+        break;
+      case "mousemove":
+				if(_dragTarget == null && !self.isForeignObjectDragged()) {
 					_selection.set(_caret, caret);
 				} else {
 					self.caret(caret, insertBefore);
 				}
 				e.preventDefault();
 				break;
-			case "mouseup":
+      case "mouseup":
+			case "drop":
 				self.caret(caret, insertBefore);
-				if(_dragTarget != undefined) {
+				if(_dragTarget != null) {
 					var index = Number(_dragTarget.getAttribute("data-index"));
 					if(0 <= mouse.x && mouse.x <= self.width() && 0 <= mouse.y && mouse.y <= self.height()) {
 						var element = _elements[index];
@@ -451,12 +491,24 @@ function TextInput(containerId) {
 						self.render();
 						index = _caret;
 					}
-					_dragTarget = undefined;
+					_dragTarget = null;
 					self.caret(index + 1, insertBefore);
 					document.body.style.cursor = "auto";
-					self.dispatchEvent(new Event(Event.DROP, {dropZone:e.target}));
-					e.stopImmediatePropagation();
-				}
+					self.dispatchEvent(new Event(Event.DROP, {
+            pill:element,
+            dropZone:e.target,
+            localDragAndDrop: $.contains(_display.source(), e.target) || _display.source() == e.target
+          }));
+				} else {
+          // drop from outside. without a _dragTarget
+          // in case e.target is not _display.source() this
+          // means is a drop on a foreign object. something we don't
+          // need to attend
+          if (e.target != _display.source()) return;
+          self.dispatchEvent(new Event(Event.DROP, {pill:null}));
+        }
+        // this was preventing the drag and drop from one textInput to another
+        // e.stopImmediatePropagation();
 				break;
 		}
 	}
@@ -521,5 +573,5 @@ function TextInput(containerId) {
 		self.dispatchEvent(e);
 	}
 
-	init(containerId);
+	init(container);
 }

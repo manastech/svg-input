@@ -77,4 +77,4 @@ function Clipboard(input) {
 
 	init(input);
 }
-		
+

@@ -4,6 +4,7 @@
 	<head>
       <title>mBuilder</title>
       <link rel="stylesheet" type="text/css" href="style.css">
+      <script type="text/javascript" src="jquery-1.11.1.min.js"></script>
       <script type="text/javascript" src="bowser.min.js"></script>
       <script type="text/javascript" src="tools.js"></script>
       <script type="text/javascript" src="prototypes.js"></script>
@@ -15,14 +16,14 @@
       <script type="text/javascript" src="textInput.js"></script>
       <script type="text/javascript" src="character.js"></script>
       <script type="text/javascript" src="pill.js"></script>
-      
+
       <script type="text/javascript" src="textDisplay.js"></script>
       <script>
 
         var input, phantom, createButton, updateButton, _contextMenu;
 
         function init() {
-          input = new TextInput("input");
+          input = new TextInput(document.getElementById("input"));
           createButton = document.getElementById("createButton");
           createButton.style.display = "none";
           createButton.addEventListener("click", input.createPill);
@@ -31,7 +32,7 @@
             var pill = input.getPillById("116afaa1-89a5-c86c-e03d-83dd5fab97be");
             pill.label("this is a pill");
             pill.text(undefined);
-            pill.operator("min");
+            pill.data({operator: "min"});
             input.render();
           });
           input.GUIDgenerator = guid;
@@ -42,7 +43,7 @@
           input.addEventListener(Event.DROP, dropHandler);
           input.addEventListener(Event.CONTEXT_MENU, contextMenuHandler);
           input.displayHiddenCharacters(true);
-          input.data(["Hola mundo\r", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide", operator:undefined},"! new line"]);
+          input.data(["Hola mundo\r", {id:"116afaa1-89a5-c86c-e03d-83dd5fab97be", text:"this is a pill far too wide"},"! new line"]);
           input.focus(true);
           input.render();
           //input.caret(Number.MAX_VALUE);
@@ -57,7 +58,7 @@
                   string += entry;
                   break;
                 case "object":
-                  string += "(" + entry.text + " [id:" + entry.id + ", operator:" + entry.operator + "])"
+                  string += "(" + entry.text + " [id:" + entry.id + ", data:" + JSON.stringify(entry.data) + "])"
                   break;
               }
             });
@@ -88,7 +89,7 @@
         }
 
         function dragHandler(e) {
-          phantom = document.body.appendChild(e.info.pill);
+          phantom = document.body.appendChild(e.info.phantom);
           phantom.style.position = "absolute";
           phantom.style.opacity = 0.5;
           phantom.style.left = e.info.mouseX + "px";
@@ -146,7 +147,7 @@
             button.style.display = "block";
             button.style.width = "100%";
             button.onclick = customHandler || function(e) {
-              info.pill.operator(option);
+              info.pill.data({operator: option});
               /*
               var label = [];
               if(option != undefined) {
@@ -169,7 +170,7 @@
               input.render();
             }
           }
-        
+
         window.onload = init;
 
 	    </script>
