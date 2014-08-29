@@ -16,7 +16,7 @@ function Pill(id, label, text, hasMenu, data) {
 	var _focus;
 	var _boundingBox;
 	var _displayHiddenCharacters;
-  var _hasMenu;
+	var _hasMenu;
 
 	function init(id, label, text, hasMenu, data) {
 		_type = "pill";
