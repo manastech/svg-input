@@ -4,7 +4,6 @@
   <head>
       <title>mBuilder</title>
       <link rel="stylesheet" type="text/css" href="style.css">
-      <script type="text/javascript" src="jquery-1.11.1.min.js"></script>
       <script type="text/javascript" src="bowser.min.js"></script>
       <script type="text/javascript" src="tools.js"></script>
       <script type="text/javascript" src="prototypes.js"></script>
@@ -99,10 +98,11 @@
         }
 
         function dropHandler(e) {
-          if(phantom.parentNode) {
+          if(phantom && phantom.parentNode) {
             phantom.parentNode.removeChild(phantom);
           }
           window.removeEventListener("mousemove", mouseHandler);
+          console.log("Local drop: " + e.info.localDragAndDrop);
           console.log(e.info.dropZone);
         }
 
@@ -170,9 +170,7 @@
               input.render();
             }
           }
-
         window.onload = init;
-
       </script>
     </head>
     <body>

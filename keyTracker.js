@@ -5,8 +5,19 @@ function KeyTracker(input) {
   var _input;
   var _container;
   var _hiddenInput;
-  var _deadKey;
   var _isMac;
+  var BACKSPACE = 8;
+  var TAB = 9;
+  var ESCAPE = 27;
+  var ENTER = 13;
+  var END = 35;
+  var HOME = 36;
+  var ARROW_LEFT = 37;
+  var ARROW_UP = 38;
+  var ARROW_RIGHT = 39;
+  var ARROW_DOWN = 40;
+  var DELETE = 46;
+  var DIACRITICAL_MARKS = /[\u005E\u0060\u00A8\u00B4\u02C6\u02CA\u02CB\u02CE\u02CF\u02DD\u02DF\u02F4\u02F5\u02F6\u0953\u0954\u1DC0-\u1DE6\u0300-\u036F\u0591-\u05AE]/;
 
   function init(input) {
     _input = input;
@@ -50,13 +61,20 @@ function KeyTracker(input) {
     }
   }
 
-  function insert(charCode) {
+  function insert(string) {
+      var chars = string.split("");
+      chars.forEach(function (char) {
+        insertFromCharCode(char.charCodeAt(0));
+      })
+  }
+
+  function insertFromCharCode(charCode) {
     var start = _input.selection().length()? _input.selection().start() : _input.caret();
     var remove = _input.selection().length();
     var char = String.fromCharCode(charCode);
     _input.selection().clear();
     _input.append(start, remove, char);
-    _input.caret(start + 1, charCode != 13);
+    _input.caret(start + 1, charCode != ENTER);
   }
 
   function getKeyCode(e) {
@@ -66,10 +84,10 @@ function KeyTracker(input) {
   function keyPressHandler(e) {
     var keyCode = getKeyCode(e);
     switch(keyCode) {
-      case 13://Enter
+      case ENTER:
         break;
       default:
-        insert(keyCode);
+        insertFromCharCode(keyCode);
         break;
     }
     e.preventDefault();
@@ -81,7 +99,7 @@ function KeyTracker(input) {
     var caret = _input.caret();
     var preventDefault = true;
     switch(keyCode) {
-      case 8://Backspace
+      case BACKSPACE:
         if(caret || _input.selection().length()) {
           start = _input.selection().length()? _input.selection().start() : caret - 1;
           remove = Math.max(1, _input.selection().length());
@@ -91,24 +109,24 @@ function KeyTracker(input) {
           _input.caret(caret);
         }
         break;
-      case 9://Tab
-      case 27://Escape
+      case TAB:
+      case ESCAPE:
         _input.focus(false);
         break;
-      case 13://Enter
-        insert(keyCode);
+      case ENTER:
+        insertFromCharCode(keyCode);
         break;
-      case 35://End
+      case END:
         caret = Number.MAX_VALUE;
         select(e.shiftKey, _input.caret(), caret);
         _input.caret(caret);
         break;
-      case 36://Home
+      case HOME:
         caret = 0;
         select(e.shiftKey, _input.caret(), caret);
         _input.caret(caret);
         break;
-      case 37://Arrow left
+      case ARROW_LEFT:
         if((_isMac && e.altKey) || (!_isMac && e.ctrlKey)) {
           caret = _input.prevBoundary(caret - 1);
         } else {
@@ -117,11 +135,11 @@ function KeyTracker(input) {
         select(e.shiftKey, _input.caret(), caret);
         _input.caret(caret);
         break;
-      case 38://Arrow up
+      case ARROW_UP:
         _input.jump(-1);
         select(e.shiftKey, caret, _input.caret());
         break;
-      case 39://Arrow right
+      case ARROW_RIGHT:
         if((_isMac && e.altKey) || (!_isMac && e.ctrlKey)) {
           var nextBoundary = _input.nextBoundary(caret);
           if(nextBoundary != -1) {
@@ -135,11 +153,11 @@ function KeyTracker(input) {
         select(e.shiftKey, _input.caret(), caret);
         _input.caret(caret);
         break;
-      case 40://Arrow down
+      case ARROW_DOWN:
         _input.jump(1);
         select(e.shiftKey, caret, _input.caret());
         break;
-      case 46://Delete
+      case DELETE:
         start = _input.selection().length()? _input.selection().start() : caret;
         remove = Math.max(1, _input.selection().length());
         caret = start;
@@ -155,11 +173,11 @@ function KeyTracker(input) {
   }
 
   function inputHandler(e) {
-    if(_deadKey) {
-      insert(_hiddenInput.value.charCodeAt(0));
+    var deadKey = DIACRITICAL_MARKS.test(_hiddenInput.value) && _hiddenInput.value.length == 1;
+    if(!deadKey) {
+      insert(_hiddenInput.value);
       _hiddenInput.value = "";
     }
-    _deadKey = _hiddenInput.value.length > 0;
   }
 
   init(input);

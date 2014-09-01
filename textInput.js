@@ -394,7 +394,7 @@ function TextInput(container) {
     mouse.y -= _container.offsetTop - _container.scrollTop + _margin;
     switch(e.type) {
       case "mousedown":
-        $(document.activeElement).blur();
+        document.activeElement.blur();
         if(e.target.textContent == TextDisplay.ARROW_DOWN) {
           e.stopImmediatePropagation();
           var info = {};
@@ -497,7 +497,7 @@ function TextInput(container) {
           self.dispatchEvent(new Event(Event.DROP, {
             pill:element,
             dropZone:e.target,
-            localDragAndDrop: $.contains(_display.source(), e.target) || _display.source() == e.target
+            localDragAndDrop: _display.source().contains(e.target) || _display.source() == e.target
           }));
         } else {
           // drop from outside. without a _dragTarget
@@ -505,7 +505,7 @@ function TextInput(container) {
           // means is a drop on a foreign object. something we don't
           // need to attend
           if (e.target != _display.source()) return;
-          self.dispatchEvent(new Event(Event.DROP, {pill:null}));
+          self.dispatchEvent(new Event(Event.DROP, {pill:null, dropZone:e.target, localDragAndDrop:false}));
         }
         // this was preventing the drag and drop from one textInput to another
         // e.stopImmediatePropagation();
